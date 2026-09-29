@@ -1,91 +1,92 @@
 # DAZDOWNLOADER
 
-Application Android (Flutter) de téléchargement de médias : on colle un lien,
-l'app détecte la plateforme, propose les formats disponibles, puis enregistre
-le fichier localement.
+Application Android Flutter de téléchargement local de médias publics accessibles.
+Pas de compte DAZDOWNLOADER, pas de serveur utilisateur ni de synchronisation cloud.
 
-> **Statut : MVP UI.** L'interface, le routage, le thème et la validation
-> d'URL sont réels et testés. Le moteur de téléchargement est encore un
-> simulateur — voir [Ce qui manque](#ce-qui-manque-pour-un-usage-réel).
+Le simulateur a été remplacé par **yt-dlp + FFmpeg** via
+[youtubedl-android 0.18.1](https://github.com/yausername/youtubedl-android/tree/0.18.1).
+L'intégration est compilable et testée automatiquement ; la validation réelle sur
+appareil et sur les six plateformes reste à effectuer.
 
-## Plateformes reconnues
+## Fonctionnement
 
-YouTube · TikTok · Instagram · Snapchat · X · Facebook
+1. Coller le lien d'une vidéo YouTube, TikTok, Instagram, Snapchat, X ou Facebook.
+2. Analyser ses vraies métadonnées et ses formats accessibles.
+3. Sélectionner MP4, WebM ou MP3 selon ce que le média permet.
+4. Télécharger ; FFmpeg assemble les flux séparés ou extrait l'audio.
+5. Ouvrir le fichier enregistré dans `Downloads/DAZDOWNLOADER`.
 
-La détection est faite par `MediaUrlParser`, qui normalise l'URL (ajoute le
-schéma, retire le fragment), refuse les URL vides / malformées / non supportées
-et gère les sous-domaines.
+Les résolutions ne sont pas inventées : une source 360p ne propose pas 1080p.
+Les résolutions supérieures apparaissent si disponibles. La taille inconnue d'un
+flux ou d'un MP3 converti n'est pas remplacée par une estimation fictive.
+
+La progression distingue transfert, traitement et enregistrement. Un transfert
+à 100 % n'est pas un succès : il faut la fin de FFmpeg, un fichier non vide avec
+un en-tête cohérent, puis sa publication dans Downloads.
+
+## Limites de cette première intégration
+
+- Android 7/API 24 minimum. Pas de moteur de téléchargement dans le navigateur.
+- Une vidéo et une opération à la fois. **Garder l'application ouverte** :
+  service en arrière-plan et reprise après arrêt du processus non implémentés.
+- Playlists, publications multi-médias et directs en cours refusés explicitement.
+  Les replays terminés peuvent être téléchargés.
+- Aucune connexion aux réseaux sociaux, aucun cookie importé, aucun contournement
+  de DRM. Un lien public peut malgré tout être bloqué par la plateforme.
+- Reconnaître un domaine ne garantit pas le téléchargement de tous ses contenus :
+  le support dépend des extracteurs de yt-dlp et des restrictions de la plateforme.
+- Historique persistant, partage, dossier personnalisé et préférences persistantes
+  restent à développer.
+
+En cas d'échec, **Mettre à jour le moteur et réessayer** télécharge explicitement
+la version stable de yt-dlp depuis GitHub, puis refait l'analyse. Ce n'est ni une
+mise à jour automatique de l'APK ni une garantie de résolution des restrictions.
 
 ## Architecture
 
-```
-lib/
-├── main.dart                     ProviderScope + DazDownloaderApp
-├── app.dart                      MaterialApp.router + thème
-├── core/
-│   ├── routing/app_router.dart   go_router (ShellRoute + 4 routes)
-│   ├── settings/                 contrôleur de mode sombre
-│   └── theme/app_theme.dart      thème Material 3 clair/sombre
-└── features/
-    ├── home/presentation/        champ URL, collage, grille plateformes
-    ├── download/
-    │   ├── domain/               MediaPreview, MediaFormatOption, MediaUrlParser
-    │   ├── data/                 MediaEngine (interface) + FakeMediaEngine
-    │   └── presentation/        DownloadPage + DownloadController (Riverpod)
-    ├── history/presentation/     état vide (persistance à venir)
-    ├── settings/presentation/    mode sombre + à propos
-    └── shell/presentation/       NavigationBar
-```
+- `lib/features/download/domain/media_engine.dart` : contrat du moteur.
+- `lib/features/download/data/android_media_engine.dart` : commandes et progression.
+- `lib/features/download/presentation/download_controller.dart` : état de l'opération.
+- Dans `android/app/src/main/kotlin/com/dazdownloader/dazdownloader/` :
+  `MediaBridge.kt` exécute yt-dlp/FFmpeg hors du thread UI ; `MediaCatalog.kt`
+  sélectionne les vrais formats ; `DownloadStore.kt` valide et enregistre les fichiers.
 
-**State management** : Riverpod 3 (`Notifier` pour le thème, `AsyncNotifier`
-pour la résolution d'URL).
-**Navigation** : go_router 18.
-**Dépendances** : uniquement `flutter_riverpod`, `go_router`, `cupertino_icons`.
+Android 10+ utilise `MediaStore` avec une entrée masquée pendant l'écriture.
+Android 7–9 demande l'autorisation de stockage et utilise un `FileProvider` limité
+au dossier DAZDOWNLOADER. Noms nettoyés et individualisés, aucune écriture sur un
+fichier existant. Les flux signés restent côté natif.
 
-## Lancer le projet
+## Développement
+
+Prérequis : Flutter compatible avec `pubspec.yaml`, SDK Android et JDK 17.
 
 ```bash
 flutter pub get
-flutter run                  # appareil ou émulateur Android
-flutter analyze              # doit renvoyer "No issues found!"
-flutter test                 # 3 tests
+flutter analyze --no-pub
+flutter test --no-pub
+cd android
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ./gradlew :app:testDebugUnitTest
 ```
 
-### Build APK release
+Depuis la racine du projet :
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64   # Java 25 n'a pas de JAVA_COMPILER
-flutter build apk --release --split-per-abi
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 flutter build apk --release --split-per-abi
 ```
 
-Les artefacts sont lands dans `build/app/outputs/flutter-apk/` :
+APK dans `build/app/outputs/flutter-apk/`. Pour la plupart des téléphones récents :
+`app-arm64-v8a-release.apk`. Les builds release utilisent encore la **clé de debug** :
+ce sont des builds de test, pas des versions prêtes à publier.
 
-| ABI | Fichier | Taille |
-|---|---|---|
-| arm64-v8a | `app-arm64-v8a-release.apk` | ~17 Mo |
-| armeabi-v7a | `app-armeabi-v7a-release.apk` | ~15 Mo |
-| x86_64 | `app-x86_64-release.apk` | ~19 Mo |
+Les tests Flutter utilisent un double de moteur, jamais des téléchargements réseau.
+Les tests JVM vérifient formats, URL, validation minimale des fichiers et courses
+annulation/publication ; ils ne testent pas MediaStore sur appareil.
+Voir [la recette Android](docs/android-download-testing.md) pour la validation réelle.
 
-## Tests
+## Distribution
 
-| Fichier | Couverture |
-|---|---|
-| `test/media_url_parser_test.dart` | URL supportées, malformées, refusées |
-| `test/widget_test.dart` | rendu de l'accueil |
-
-## Ce qui manque pour un usage réel
-
-1. **Moteur de téléchargement** — `FakeMediaEngine` renvoie un aperçu codé en
-   dur avec un délai artificiel de 650 ms. Le bouton « Télécharger » affiche
-   seulement un message.
-2. **Historique** — `HistoryPage` affiche un état vide codé en dur, aucune
-   persistance.
-3. **Réglages** — le mode sombre n'est pas persisté ; deux `ListTile` n'ont
-   aucune action.
-4. **Permissions** — `INTERNET` et `WRITE_EXTERNAL_STORAGE` sont déclarés mais
-   le dossier de sauvegarde n'est pas encore demandé à l'utilisateur.
-5. **Signature** — le build release utilise encore les clés de debug.
-
-## Licence
-
-Usage privé / expérimental.
+youtubedl-android est publié sous GPL-3.0 et embarque notamment FFmpeg, Python et
+QuickJS. Avant distribution publique, vérifier les obligations de licence de
+l'ensemble (sources, notices, options de compilation). Cette intégration ne
+choisit pas automatiquement une nouvelle licence pour le projet. Utiliser des
+contenus pour lesquels le téléchargement est autorisé.

@@ -1,10 +1,6 @@
 import 'media_models.dart';
 
-enum MediaUrlError {
-  empty,
-  malformed,
-  unsupported,
-}
+enum MediaUrlError { empty, malformed, unsupported }
 
 class InvalidUrlException implements Exception {
   const InvalidUrlException(this.reason);
@@ -13,11 +9,11 @@ class InvalidUrlException implements Exception {
 
   @override
   String toString() => switch (reason) {
-        MediaUrlError.empty => 'Collez une URL pour continuer.',
-        MediaUrlError.malformed => 'Cette URL n’est pas valide.',
-        MediaUrlError.unsupported =>
-          'Cette plateforme n’est pas encore prise en charge.',
-      };
+    MediaUrlError.empty => 'Collez une URL pour continuer.',
+    MediaUrlError.malformed => 'Cette URL n’est pas valide.',
+    MediaUrlError.unsupported =>
+      'Cette plateforme n’est pas encore prise en charge.',
+  };
 }
 
 class MediaUrlParser {
@@ -32,6 +28,7 @@ class MediaUrlParser {
     if (uri == null ||
         !{'http', 'https'}.contains(uri.scheme) ||
         uri.host.isEmpty ||
+        (uri.hasPort && uri.port != 80 && uri.port != 443) ||
         uri.userInfo.isNotEmpty) {
       return null;
     }
@@ -40,7 +37,7 @@ class MediaUrlParser {
       return null;
     }
 
-    return uri.replace(fragment: '');
+    return uri.replace(scheme: 'https', port: 443).removeFragment();
   }
 
   static MediaPlatform? platformFor(Uri uri) {

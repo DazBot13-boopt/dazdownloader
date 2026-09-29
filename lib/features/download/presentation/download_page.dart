@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,16 @@ class _DownloadPageState extends ConsumerState<DownloadPage> {
   @override
   void initState() {
     super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(covariant DownloadPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.url != oldWidget.url) _resolve();
+  }
+
+  void _resolve() {
     final url = widget.url;
     if (url != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -40,23 +51,24 @@ class _DownloadPageState extends ConsumerState<DownloadPage> {
           icon: const Icon(Icons.arrow_back),
         ),
       ),
-      body: state.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => _DownloadError(
-          message: error.toString(),
-          onRetry: widget.url == null
-              ? null
-              : () => ref
-                  .read(downloadControllerProvider.notifier)
-                  .resolve(widget.url!),
-        ),
-        data: (preview) {
-          if (preview == null) {
-            return const _NoUrlState();
-          }
-          return _PreviewContent(preview: preview);
-        },
-      ),
+      body: state.preview != null
+          ? _PreviewContent(key: ValueKey(state.preview), state: state)
+          : state.status == DownloadStatus.idle
+          ? const _NoUrlState()
+          : ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _TransferStatus(state: state),
+                if (!state.isBusy && state.url != null)
+                  OutlinedButton.icon(
+                    onPressed: () => ref
+                        .read(downloadControllerProvider.notifier)
+                        .resolve(state.url.toString(), force: true),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Réessayer l’analyse'),
+                  ),
+              ],
+            ),
     );
   }
 }
@@ -99,61 +111,22 @@ class _NoUrlState extends StatelessWidget {
   }
 }
 
-class _DownloadError extends StatelessWidget {
-  const _DownloadError({required this.message, this.onRetry});
-
-  final String message;
-  final VoidCallback? onRetry;
+class _PreviewContent extends ConsumerStatefulWidget {
+  const _PreviewContent({super.key, required this.state});
+  final DownloadState state;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 54, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text(
-              'Impossible d’analyser le lien',
-              style: theme.textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center),
-            if (onRetry != null) ...[
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Réessayer'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+  ConsumerState<_PreviewContent> createState() => _PreviewContentState();
 }
 
-class _PreviewContent extends StatefulWidget {
-  const _PreviewContent({required this.preview});
-
-  final MediaPreview preview;
-
-  @override
-  State<_PreviewContent> createState() => _PreviewContentState();
-}
-
-class _PreviewContentState extends State<_PreviewContent> {
+class _PreviewContentState extends ConsumerState<_PreviewContent> {
   int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final preview = widget.preview;
+    final state = widget.state;
+    final preview = state.preview!;
     final formats = preview.formats;
     if (formats.isEmpty) {
       return const _NoUrlState();
@@ -178,6 +151,12 @@ class _PreviewContentState extends State<_PreviewContent> {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
+        const SizedBox(height: 8),
+        Text(
+          preview.sourceUrl.toString(),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
         const SizedBox(height: 26),
         Text(
           'Choisir la qualité',
@@ -193,10 +172,12 @@ class _PreviewContentState extends State<_PreviewContent> {
             for (var index = 0; index < formats.length; index++)
               ChoiceChip(
                 label: Text(
-                  '${formats[index].quality.label} · ${formats[index].format.label}',
+                  '${formats[index].qualityLabel} · ${formats[index].format.label}',
                 ),
                 selected: index == _selectedIndex,
-                onSelected: (_) => setState(() => _selectedIndex = index),
+                onSelected: state.isBusy
+                    ? null
+                    : (_) => setState(() => _selectedIndex = index),
               ),
           ],
         ),
@@ -213,20 +194,22 @@ class _PreviewContentState extends State<_PreviewContent> {
           ),
         ),
         const SizedBox(height: 18),
+        _TransferStatus(state: state),
         FilledButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Le moteur natif sera branché à la prochaine étape.'),
-              ),
-            );
-          },
+          onPressed: state.isBusy
+              ? null
+              : () => ref
+                    .read(downloadControllerProvider.notifier)
+                    .download(selected),
           icon: const Icon(Icons.download),
-          label: const Text('Télécharger'),
+          label: Text(
+            state.result == null ? 'Télécharger' : 'Télécharger à nouveau',
+          ),
         ),
         const SizedBox(height: 10),
         Text(
-          'Le téléchargement sera enregistré dans l’espace de l’appareil.',
+          'Destination : Downloads/DAZDOWNLOADER. '
+          'Gardez l’application ouverte jusqu’à la fin du téléchargement.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -237,9 +220,105 @@ class _PreviewContentState extends State<_PreviewContent> {
   }
 
   String _formatDuration(Duration duration) {
+    if (duration == Duration.zero) return 'Durée inconnue';
     final minutes = duration.inMinutes.toString().padLeft(2, '0');
     final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
+  }
+}
+
+class _TransferStatus extends ConsumerWidget {
+  const _TransferStatus({required this.state});
+  final DownloadState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.read(downloadControllerProvider.notifier);
+    final label = switch (state.status) {
+      DownloadStatus.resolving => 'Analyse du lien et des formats disponibles…',
+      DownloadStatus.updating => 'Mise à jour du moteur depuis GitHub…',
+      DownloadStatus.downloading => 'Téléchargement du flux…',
+      DownloadStatus.processing => 'Assemblage ou conversion du média…',
+      DownloadStatus.saving => 'Enregistrement dans Downloads…',
+      DownloadStatus.cancelling => 'Annulation en cours…',
+      DownloadStatus.cancelled => 'Téléchargement annulé.',
+      DownloadStatus.completed => 'Téléchargement terminé',
+      DownloadStatus.failed => 'Opération impossible',
+      _ => '',
+    };
+    if (label.isEmpty) return const SizedBox.shrink();
+    final percent = state.status == DownloadStatus.downloading
+        ? state.progress?.percent
+        : null;
+    final eta = state.progress?.etaSeconds;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.titleMedium,
+            semanticsLabel: label,
+          ),
+          if (state.isBusy) ...[
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: percent == null ? null : percent / 100,
+            ),
+            if (percent != null)
+              Text(
+                '${percent.toStringAsFixed(0)} % du flux'
+                '${eta != null && eta > 0 ? ' · environ ${eta}s restantes' : ''}',
+              ),
+            if (state.status != DownloadStatus.updating)
+              TextButton.icon(
+                onPressed: state.status == DownloadStatus.cancelling
+                    ? null
+                    : controller.cancel,
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Annuler'),
+              ),
+          ],
+          if (state.error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              state.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+              TextButton.icon(
+                onPressed: controller.updateEngine,
+                icon: const Icon(Icons.system_update_alt),
+                label: const Text('Mettre à jour le moteur et réessayer'),
+              ),
+          ],
+          if (state.result case final result?) ...[
+            Text(result.name),
+            Text(
+              '${(result.sizeBytes / (1024 * 1024)).toStringAsFixed(1)} Mo '
+              '· Downloads/DAZDOWNLOADER',
+            ),
+            const SizedBox(height: 8),
+            FilledButton.tonalIcon(
+              onPressed: () async {
+                try {
+                  await controller.openResult();
+                } catch (error) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(error.toString())));
+                  }
+                }
+              },
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Ouvrir le fichier'),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

@@ -19,7 +19,7 @@ android {
         applicationId = "com.dazdownloader.dazdownloader"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = maxOf(24, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -36,6 +36,22 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    packaging {
+        jniLibs.useLegacyPackaging = true
+        // These are archives intentionally packaged as native resources.
+        jniLibs.keepDebugSymbols += "**/*.zip.so"
+        resources.excludes += setOf("META-INF/DEPENDENCIES")
+    }
+}
+
+dependencies {
+    val mediaEngineVersion = "0.18.1"
+    implementation("io.github.junkfood02.youtubedl-android:library:$mediaEngineVersion")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$mediaEngineVersion")
+    implementation("androidx.core:core-ktx:1.15.0")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }
 
 kotlin {
