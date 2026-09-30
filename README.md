@@ -81,6 +81,15 @@ ce sont des builds de test, pas des versions prêtes à publier.
 Les tests Flutter utilisent un double de moteur, jamais des téléchargements réseau.
 Les tests JVM vérifient formats, URL, validation minimale des fichiers et courses
 annulation/publication ; ils ne testent pas MediaStore sur appareil.
+
+La version `1.0.1+2` corrige un crash d'initialisation propre au build release :
+R8 supprimait des constructeurs ZIP utilisés par réflexion pour décompresser le
+moteur. Les règles requises sont conservées dans `android/app/proguard-rules.pro`.
+Les erreurs de chargement du moteur sont désormais remontées dans l'interface.
+Le test `tooling/check_release_zip.sh` reproduit l'échec après optimisation sans
+ces règles, puis vérifie leur correction (voir la recette ci-dessous).
+Cela ne remplace pas un nouvel essai sur le téléphone concerné.
+
 Voir [la recette Android](docs/android-download-testing.md) pour la validation réelle.
 
 ## Distribution

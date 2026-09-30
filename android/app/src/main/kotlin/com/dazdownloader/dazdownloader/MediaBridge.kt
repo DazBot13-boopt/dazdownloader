@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -102,22 +103,28 @@ class MediaBridge(
             var value: Any? = null
             var failure: MediaFailure? = null
             try {
-                task.checkActive()
-                YoutubeDL.init(activity.applicationContext)
-                FFmpeg.init(activity.applicationContext)
-                task.checkActive()
-                value = when (call.method) {
-                    "resolve" -> resolve(requiredUrl(call), task)
-                    "download" -> download(requiredUrl(call),
-                        call.argument<String>("formatId") ?: "", task)
-                    else -> {
-                        YoutubeDL.updateYoutubeDL(activity.applicationContext, YoutubeDL.UpdateChannel.STABLE)
-                        task.checkActive()
-                        catalogs.clear()
-                        null
+                value = NativeRuntimeGuard.run {
+                    task.checkActive()
+                    YoutubeDL.init(activity.applicationContext)
+                    FFmpeg.init(activity.applicationContext)
+                    task.checkActive()
+                    when (call.method) {
+                        "resolve" -> resolve(requiredUrl(call), task)
+                        "download" -> download(requiredUrl(call),
+                            call.argument<String>("formatId") ?: "", task)
+                        else -> {
+                            YoutubeDL.updateYoutubeDL(activity.applicationContext, YoutubeDL.UpdateChannel.STABLE)
+                            task.checkActive()
+                            catalogs.clear()
+                            null
+                        }
                     }
                 }
             } catch (error: Exception) {
+                if (error is MediaFailure && error.code == "engine_initialization") {
+                    // Local crash diagnostics only, not uploaded or sent to Flutter.
+                    Log.e("DazDownloader", "Native runtime initialization failed", error.cause)
+                }
                 failure = friendlyError(error, task)
             } finally {
                 cancellation.cancel(false)
