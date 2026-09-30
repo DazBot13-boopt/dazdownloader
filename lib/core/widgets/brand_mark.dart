@@ -10,8 +10,8 @@ class BrandMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = dark
-        ? const [Color(0xFF7FA2FF), Color(0xFF69E2FF)]
-        : const [Color(0xFF315FEA), Color(0xFF69C7FF)];
+        ? const [Color(0xFF7EA2FF), Color(0xFF58D8FF)]
+        : const [Color(0xFF3D73FF), Color(0xFF58D8FF)];
     return Container(
       width: size,
       height: size,

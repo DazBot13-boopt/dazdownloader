@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const primary = Color(0xFF4F7CFF);
-  static const secondary = Color(0xFF8EA7FF);
-  static const accent = Color(0xFF69E2FF);
+  static const primary = Color(0xFF3D73FF);
+  static const secondary = Color(0xFF75A3FF);
+  static const accent = Color(0xFF58D8FF);
   static const success = Color(0xFF34C759);
   static const error = Color(0xFFFF3B30);
 
@@ -23,7 +23,8 @@ class AppTheme {
       scaffoldBackgroundColor: brightness == Brightness.dark
           ? const Color(0xFF0B0D12)
           : const Color(0xFFF5F7FB),
-      fontFamily: 'Inter',
+      fontFamily: 'Roboto',
+      textTheme: _textTheme(brightness),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
@@ -74,6 +75,36 @@ class AppTheme {
           side: BorderSide(color: scheme.outlineVariant.withAlpha(75)),
         ),
       ),
+    );
+  }
+
+  static TextTheme _textTheme(Brightness brightness) {
+    final base = brightness == Brightness.dark
+        ? const Color(0xFFF5F7FF)
+        : const Color(0xFF10131A);
+    return TextTheme(
+      displaySmall: TextStyle(
+        color: base,
+        fontWeight: FontWeight.w900,
+        letterSpacing: -1.2,
+      ),
+      headlineSmall: TextStyle(
+        color: base,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.5,
+      ),
+      titleLarge: TextStyle(
+        color: base,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.2,
+      ),
+      titleMedium: TextStyle(
+        color: base,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.1,
+      ),
+      bodyLarge: TextStyle(color: base, height: 1.35),
+      bodyMedium: TextStyle(color: base, height: 1.35),
     );
   }
 }
