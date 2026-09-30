@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const primary = Color(0xFF6C5CE7);
-  static const secondary = Color(0xFF12B8A6);
-  static const accent = Color(0xFFFFB454);
+  static const primary = Color(0xFF4F7CFF);
+  static const secondary = Color(0xFF8EA7FF);
+  static const accent = Color(0xFF69E2FF);
   static const success = Color(0xFF34C759);
   static const error = Color(0xFFFF3B30);
 
@@ -14,19 +14,15 @@ class AppTheme {
     final scheme = ColorScheme.fromSeed(
       seedColor: primary,
       brightness: brightness,
-    ).copyWith(
-      secondary: secondary,
-      tertiary: accent,
-      error: error,
-    );
+    ).copyWith(secondary: secondary, tertiary: accent, error: error);
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: brightness == Brightness.dark
-          ? const Color(0xFF10111B)
-          : const Color(0xFFF8F8FC),
+          ? const Color(0xFF0B0D12)
+          : const Color(0xFFF5F7FB),
       fontFamily: 'Inter',
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -55,7 +51,7 @@ class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: brightness == Brightness.dark
-            ? const Color(0xFF151622)
+            ? const Color(0xFF11151D)
             : Colors.white,
         indicatorColor: scheme.primary.withAlpha(35),
         labelTextStyle: WidgetStatePropertyAll(

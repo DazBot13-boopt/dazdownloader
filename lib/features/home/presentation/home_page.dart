@@ -226,7 +226,11 @@ class _HeroHeader extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: LinearGradient(
-          colors: [const Color(0xFF30266C), scheme.primary, scheme.secondary],
+          colors: [
+            const Color(0xFF0B0D12),
+            const Color(0xFF17254A),
+            scheme.primary,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
