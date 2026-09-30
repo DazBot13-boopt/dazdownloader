@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../download/domain/media_models.dart';
 import '../../download/domain/media_url_parser.dart';
+import '../../../core/widgets/brand_mark.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -88,7 +89,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       _HeroHeader(theme: theme),
                       const SizedBox(height: 28),
                       Text(
-                        'Collez votre lien',
+                        'Nouveau téléchargement',
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -197,17 +198,13 @@ class _HeroHeader extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(38),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.download_rounded,
-              color: Colors.white,
-              size: 34,
-            ),
+                          width: 62,
+                          height: 62,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(38),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const BrandMark(size: 52),
           ),
           const SizedBox(width: 18),
           Expanded(

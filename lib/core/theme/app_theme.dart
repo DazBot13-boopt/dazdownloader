@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const primary = Color(0xFF007AFF);
-  static const secondary = Color(0xFF8B5CF6);
-  static const accent = Color(0xFFFF9500);
+  static const primary = Color(0xFF6C5CE7);
+  static const secondary = Color(0xFF12B8A6);
+  static const accent = Color(0xFFFFB454);
   static const success = Color(0xFF34C759);
   static const error = Color(0xFFFF3B30);
 
@@ -24,7 +24,9 @@ class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: brightness == Brightness.dark
+          ? const Color(0xFF10111B)
+          : const Color(0xFFF8F8FC),
       fontFamily: 'Inter',
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -52,7 +54,9 @@ class AppTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surface,
+        backgroundColor: brightness == Brightness.dark
+            ? const Color(0xFF151622)
+            : Colors.white,
         indicatorColor: scheme.primary.withAlpha(35),
         labelTextStyle: WidgetStatePropertyAll(
           TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -64,6 +68,14 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: scheme.outlineVariant.withAlpha(75)),
         ),
       ),
     );
