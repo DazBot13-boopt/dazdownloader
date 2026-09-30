@@ -63,117 +63,153 @@ class _HomePageState extends ConsumerState<HomePage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final horizontalPadding = constraints.maxWidth >= 720 ? 40.0 : 20.0;
-            final columns = constraints.maxWidth >= 760
-                ? 3
-                : constraints.maxWidth >= 480
-                ? 2
-                : 1;
+      body: Stack(
+        children: [
+          Positioned(
+            top: -110,
+            right: -80,
+            child: _GlowOrb(color: theme.colorScheme.primary),
+          ),
+          Positioned(
+            top: 360,
+            left: -120,
+            child: _GlowOrb(color: theme.colorScheme.secondary),
+          ),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final horizontalPadding = constraints.maxWidth >= 720
+                    ? 40.0
+                    : 20.0;
+                final columns = constraints.maxWidth >= 760
+                    ? 3
+                    : constraints.maxWidth >= 480
+                    ? 2
+                    : 1;
 
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                24,
-                horizontalPadding,
-                32,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 960),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _HeroHeader(theme: theme),
-                      const SizedBox(height: 28),
-                      Text(
-                        'Nouveau téléchargement',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Détectez la plateforme, choisissez une qualité et téléchargez localement.',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _urlController,
-                        keyboardType: TextInputType.url,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _submit(),
-                        decoration: InputDecoration(
-                          hintText: 'https://www.youtube.com/watch?v=…',
-                          labelText: 'URL de la vidéo ou des photos TikTok',
-                          prefixIcon: const Icon(Icons.link),
-                          suffixIcon: IconButton(
-                            onPressed: _pasteUrl,
-                            tooltip: 'Coller le lien',
-                            icon: const Icon(Icons.content_paste),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton.icon(
-                        onPressed: _submit,
-                        icon: const Icon(Icons.arrow_forward),
-                        label: const Text('Analyser le lien'),
-                      ),
-                      const SizedBox(height: 34),
-                      _SectionTitle(
-                        title: 'Plateformes prises en charge',
-                        subtitle: 'Six univers, une même expérience.',
-                      ),
-                      const SizedBox(height: 14),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: MediaPlatform.values.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: columns,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: columns == 1 ? 3.4 : 2.3,
-                        ),
-                        itemBuilder: (context, index) {
-                          final platform = MediaPlatform.values[index];
-                          return _PlatformCard(
-                            platform: platform,
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Collez un lien ${platform.label} dans le champ ci-dessus.',
-                                  ),
-                                ),
-                              );
-                              _urlController.clear();
-                            },
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 34),
-                      _SectionTitle(
-                        title: 'Derniers téléchargements',
-                        subtitle: 'Votre historique local apparaîtra ici.',
-                      ),
-                      const SizedBox(height: 14),
-                      const _EmptyHistoryCard(),
-                    ],
+                return SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    24,
+                    horizontalPadding,
+                    32,
                   ),
-                ),
-              ),
-            );
-          },
-        ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 960),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _HeroHeader(theme: theme),
+                          const SizedBox(height: 28),
+                          Text(
+                            'Nouveau téléchargement',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Détectez la plateforme, choisissez une qualité et téléchargez localement.',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _urlController,
+                            keyboardType: TextInputType.url,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _submit(),
+                            decoration: InputDecoration(
+                              hintText: 'https://www.youtube.com/watch?v=…',
+                              labelText: 'URL de la vidéo ou des photos TikTok',
+                              prefixIcon: const Icon(Icons.link),
+                              suffixIcon: IconButton(
+                                onPressed: _pasteUrl,
+                                tooltip: 'Coller le lien',
+                                icon: const Icon(Icons.content_paste),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          FilledButton.icon(
+                            onPressed: _submit,
+                            icon: const Icon(Icons.arrow_forward),
+                            label: const Text('Analyser le lien'),
+                          ),
+                          const SizedBox(height: 34),
+                          _SectionTitle(
+                            title: 'Plateformes prises en charge',
+                            subtitle: 'Six univers, une même expérience.',
+                          ),
+                          const SizedBox(height: 14),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: MediaPlatform.values.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columns,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: columns == 1 ? 3.4 : 2.3,
+                                ),
+                            itemBuilder: (context, index) {
+                              final platform = MediaPlatform.values[index];
+                              return _PlatformCard(
+                                platform: platform,
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Collez un lien ${platform.label} dans le champ ci-dessus.',
+                                      ),
+                                    ),
+                                  );
+                                  _urlController.clear();
+                                },
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 34),
+                          _SectionTitle(
+                            title: 'Derniers téléchargements',
+                            subtitle: 'Votre historique local apparaîtra ici.',
+                          ),
+                          const SizedBox(height: 14),
+                          const _EmptyHistoryCard(),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _GlowOrb extends StatelessWidget {
+  const _GlowOrb({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: Container(
+      width: 260,
+      height: 260,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withAlpha(18),
+        boxShadow: [BoxShadow(color: color.withAlpha(22), blurRadius: 90)],
+      ),
+    ),
+  );
 }
 
 class _HeroHeader extends StatelessWidget {
@@ -186,25 +222,33 @@ class _HeroHeader extends StatelessWidget {
     final scheme = theme.colorScheme;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: LinearGradient(
-          colors: [scheme.primary, scheme.secondary],
+          colors: [const Color(0xFF30266C), scheme.primary, scheme.secondary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.primary.withAlpha(45),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-                          width: 62,
-                          height: 62,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withAlpha(38),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const BrandMark(size: 52),
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(24),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withAlpha(40)),
+            ),
+            child: const BrandMark(size: 52),
           ),
           const SizedBox(width: 18),
           Expanded(
@@ -226,6 +270,14 @@ class _HeroHeader extends StatelessWidget {
                     color: Colors.white.withAlpha(220),
                   ),
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _HeroPill(icon: Icons.lock_outline, label: 'LOCAL'),
+                    const SizedBox(width: 8),
+                    _HeroPill(icon: Icons.bolt_outlined, label: 'RAPIDE'),
+                  ],
+                ),
               ],
             ),
           ),
@@ -233,6 +285,39 @@ class _HeroHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: Colors.white.withAlpha(22),
+      borderRadius: BorderRadius.circular(99),
+      border: Border.all(color: Colors.white.withAlpha(34)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: Colors.white),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: .7,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -280,6 +365,15 @@ class _PlatformCard extends StatelessWidget {
     MediaPlatform.facebook => Icons.public,
   };
 
+  Color get _color => switch (platform) {
+    MediaPlatform.youtube => const Color(0xFFFF375F),
+    MediaPlatform.tiktok => const Color(0xFF00C7BE),
+    MediaPlatform.instagram => const Color(0xFFE1306C),
+    MediaPlatform.snapchat => const Color(0xFFFFCC00),
+    MediaPlatform.x => const Color(0xFF71717A),
+    MediaPlatform.facebook => const Color(0xFF1877F2),
+  };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -295,10 +389,11 @@ class _PlatformCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withAlpha(24),
-                  borderRadius: BorderRadius.circular(14),
+                  color: _color.withAlpha(24),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: _color.withAlpha(35)),
                 ),
-                child: Icon(_icon, color: theme.colorScheme.primary),
+                child: Icon(_icon, color: _color),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -309,7 +404,7 @@ class _PlatformCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right),
+              Icon(Icons.arrow_forward_rounded, size: 19, color: _color),
             ],
           ),
         ),
