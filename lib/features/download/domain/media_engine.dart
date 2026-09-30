@@ -10,13 +10,14 @@ abstract interface class MediaEngine {
   });
   Future<bool> cancel(String taskId);
   Future<void> open(DownloadedMedia media);
-  Future<void> update({required String taskId});
+  Future<String> update({required String taskId});
 }
 
 class MediaEngineException implements Exception {
-  const MediaEngineException(this.code, this.message);
+  const MediaEngineException(this.code, this.message, {this.diagnostic});
   final String code;
   final String message;
+  final String? diagnostic;
 
   @override
   String toString() => message;

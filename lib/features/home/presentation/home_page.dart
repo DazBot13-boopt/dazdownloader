@@ -34,7 +34,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (uri == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Collez un lien YouTube, TikTok, Instagram, Snapchat, X ou Facebook.'),
+          content: Text(
+            'Collez un lien YouTube, TikTok, Instagram, Snapchat, X ou Facebook.',
+          ),
         ),
       );
       return;
@@ -67,8 +69,8 @@ class _HomePageState extends ConsumerState<HomePage> {
             final columns = constraints.maxWidth >= 760
                 ? 3
                 : constraints.maxWidth >= 480
-                    ? 2
-                    : 1;
+                ? 2
+                : 1;
 
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
@@ -106,7 +108,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         onSubmitted: (_) => _submit(),
                         decoration: InputDecoration(
                           hintText: 'https://www.youtube.com/watch?v=…',
-                          labelText: 'URL de la vidéo',
+                          labelText: 'URL de la vidéo ou des photos TikTok',
                           prefixIcon: const Icon(Icons.link),
                           suffixIcon: IconButton(
                             onPressed: _pasteUrl,
@@ -273,13 +275,13 @@ class _PlatformCard extends StatelessWidget {
   final VoidCallback onTap;
 
   IconData get _icon => switch (platform) {
-        MediaPlatform.youtube => Icons.play_circle_outline,
-        MediaPlatform.tiktok => Icons.music_note,
-        MediaPlatform.instagram => Icons.photo_camera_outlined,
-        MediaPlatform.snapchat => Icons.chat_bubble_outline,
-        MediaPlatform.x => Icons.close,
-        MediaPlatform.facebook => Icons.public,
-      };
+    MediaPlatform.youtube => Icons.play_circle_outline,
+    MediaPlatform.tiktok => Icons.music_note,
+    MediaPlatform.instagram => Icons.photo_camera_outlined,
+    MediaPlatform.snapchat => Icons.chat_bubble_outline,
+    MediaPlatform.x => Icons.close,
+    MediaPlatform.facebook => Icons.public,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -337,11 +339,7 @@ class _EmptyHistoryCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.history,
-            size: 34,
-            color: theme.colorScheme.primary,
-          ),
+          Icon(Icons.history, size: 34, color: theme.colorScheme.primary),
           const SizedBox(height: 10),
           Text(
             'Aucun téléchargement pour le moment',

@@ -46,7 +46,7 @@ class MediaUrlParser {
     if (_matches(host, 'youtube.com') || host == 'youtu.be') {
       return MediaPlatform.youtube;
     }
-    if (_matches(host, 'tiktok.com')) {
+    if (_matches(host, 'tiktok.com') || host == 'www.tiktokv.com') {
       return MediaPlatform.tiktok;
     }
     if (_matches(host, 'instagram.com')) {

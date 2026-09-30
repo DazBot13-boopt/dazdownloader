@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -146,7 +147,7 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
         ),
         const SizedBox(height: 6),
         Text(
-          '${preview.platform.label} · ${preview.author} · ${_formatDuration(preview.duration)}',
+          '${preview.platform.label} · ${preview.author} · ${preview.isPhotoAlbum ? '${preview.photoCount} photo(s)' : _formatDuration(preview.duration)}',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -159,7 +160,9 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
         ),
         const SizedBox(height: 26),
         Text(
-          'Choisir la qualité',
+          preview.isPhotoAlbum
+              ? 'Télécharger le carrousel'
+              : 'Choisir la qualité',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w800,
           ),
@@ -187,8 +190,10 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
             leading: const Icon(Icons.info_outline),
             title: Text('Format sélectionné : ${selected.format.label}'),
             subtitle: Text(
-              selected.sizeLabel.isEmpty
-                  ? 'La taille sera calculée avant le téléchargement.'
+              preview.isPhotoAlbum
+                  ? '${preview.photoCount} photo(s) enregistrée(s) séparément, dans l’ordre. Format fourni par TikTok (JPEG, PNG ou WebP).'
+                  : selected.sizeLabel.isEmpty
+                  ? 'Taille inconnue avant la réception du fichier.'
                   : 'Taille estimée : ${selected.sizeLabel}',
             ),
           ),
@@ -203,7 +208,11 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
                     .download(selected),
           icon: const Icon(Icons.download),
           label: Text(
-            state.result == null ? 'Télécharger' : 'Télécharger à nouveau',
+            state.result != null
+                ? 'Télécharger à nouveau'
+                : preview.isPhotoAlbum
+                ? 'Télécharger les ${preview.photoCount} photos'
+                : 'Télécharger',
           ),
         ),
         const SizedBox(height: 10),
@@ -237,7 +246,10 @@ class _TransferStatus extends ConsumerWidget {
     final label = switch (state.status) {
       DownloadStatus.resolving => 'Analyse du lien et des formats disponibles…',
       DownloadStatus.updating => 'Mise à jour du moteur depuis GitHub…',
-      DownloadStatus.downloading => 'Téléchargement du flux…',
+      DownloadStatus.downloading =>
+        state.preview?.isPhotoAlbum == true
+            ? 'Téléchargement des photos…'
+            : 'Téléchargement du flux…',
       DownloadStatus.processing => 'Assemblage ou conversion du média…',
       DownloadStatus.saving => 'Enregistrement dans Downloads…',
       DownloadStatus.cancelling => 'Annulation en cours…',
@@ -268,7 +280,7 @@ class _TransferStatus extends ConsumerWidget {
             ),
             if (percent != null)
               Text(
-                '${percent.toStringAsFixed(0)} % du flux'
+                '${percent.toStringAsFixed(0)} % ${state.preview?.isPhotoAlbum == true ? 'des photos reçues' : 'du flux'}'
                 '${eta != null && eta > 0 ? ' · environ ${eta}s restantes' : ''}',
               ),
             if (state.status != DownloadStatus.updating)
@@ -286,6 +298,26 @@ class _TransferStatus extends ConsumerWidget {
               state.error!,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
+            if (state.diagnostic case final diagnostic?) ...[
+              const SizedBox(height: 8),
+              SelectableText(diagnostic),
+              TextButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: diagnostic));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Diagnostic copié (sans lien ni cookie).',
+                        ),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.copy),
+                label: const Text('Copier le diagnostic'),
+              ),
+            ],
             if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
               TextButton.icon(
                 onPressed: controller.updateEngine,
@@ -293,6 +325,8 @@ class _TransferStatus extends ConsumerWidget {
                 label: const Text('Mettre à jour le moteur et réessayer'),
               ),
           ],
+          if (state.engineVersion != null)
+            Text('Moteur vérifié : ${state.engineVersion}'),
           if (state.result case final result?) ...[
             Text(result.name),
             Text(
@@ -300,21 +334,45 @@ class _TransferStatus extends ConsumerWidget {
               '· Downloads/DAZDOWNLOADER',
             ),
             const SizedBox(height: 8),
-            FilledButton.tonalIcon(
-              onPressed: () async {
-                try {
-                  await controller.openResult();
-                } catch (error) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(error.toString())));
+            if (result.files.isNotEmpty)
+              Text('${result.files.length} photo(s) enregistrée(s)'),
+            if (result.files.isNotEmpty)
+              for (var index = 0; index < result.files.length; index++)
+                ListTile(
+                  title: Text('Photo ${index + 1}'),
+                  subtitle: Text(result.files[index].name),
+                  trailing: IconButton(
+                    tooltip: 'Ouvrir la photo ${index + 1}',
+                    icon: const Icon(Icons.image_outlined),
+                    onPressed: () async {
+                      try {
+                        await controller.openResult(result.files[index]);
+                      } catch (error) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+            if (result.files.isEmpty)
+              FilledButton.tonalIcon(
+                onPressed: () async {
+                  try {
+                    await controller.openResult();
+                  } catch (error) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(error.toString())));
+                    }
                   }
-                }
-              },
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('Ouvrir le fichier'),
-            ),
+                },
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Ouvrir le fichier'),
+              ),
           ],
         ],
       ),

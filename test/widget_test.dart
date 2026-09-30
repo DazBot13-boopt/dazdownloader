@@ -5,9 +5,7 @@ import 'package:dazdownloader/app.dart';
 
 void main() {
   testWidgets('renders the home experience', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: DazDownloaderApp()),
-    );
+    await tester.pumpWidget(const ProviderScope(child: DazDownloaderApp()));
     await tester.pumpAndSettle();
 
     expect(find.text('DAZDOWNLOADER'), findsOneWidget);

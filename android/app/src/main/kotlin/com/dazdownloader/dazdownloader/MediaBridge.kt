@@ -31,6 +31,7 @@ class MediaBridge(
     private val main = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
     private val watchdog = Executors.newSingleThreadScheduledExecutor()
+    private val runtime = EngineRuntime(activity.applicationContext)
     private val catalogs = linkedMapOf<String, MediaCatalog>() // Worker thread only.
     private val savedUris = ConcurrentHashMap<String, String>()
     private var sink: EventChannel.EventSink? = null
@@ -105,18 +106,16 @@ class MediaBridge(
             try {
                 value = NativeRuntimeGuard.run {
                     task.checkActive()
-                    YoutubeDL.init(activity.applicationContext)
-                    FFmpeg.init(activity.applicationContext)
-                    task.checkActive()
                     when (call.method) {
                         "resolve" -> resolve(requiredUrl(call), task)
                         "download" -> download(requiredUrl(call),
                             call.argument<String>("formatId") ?: "", task)
                         else -> {
-                            YoutubeDL.updateYoutubeDL(activity.applicationContext, YoutubeDL.UpdateChannel.STABLE)
+                            runtime.ensure(task)
+                            val version = runtime.update(task)
                             task.checkActive()
                             catalogs.clear()
-                            null
+                            mapOf("engineVersion" to version)
                         }
                     }
                 }
@@ -125,7 +124,7 @@ class MediaBridge(
                     // Local crash diagnostics only, not uploaded or sent to Flutter.
                     Log.e("DazDownloader", "Native runtime initialization failed", error.cause)
                 }
-                failure = friendlyError(error, task)
+                failure = friendlyError(error, task, call.argument<String>("url"))
             } finally {
                 cancellation.cancel(false)
                 deadline?.cancel(false)
@@ -134,7 +133,11 @@ class MediaBridge(
                     if (!closed) {
                         val error = failure
                         if (error == null) result.success(value)
-                        else result.error(error.code, error.message, null)
+                        else result.error(error.code, error.message, mapOf(
+                            "engineVersion" to (runtime.version ?: "non démarré"),
+                            "androidApi" to Build.VERSION.SDK_INT,
+                            "appVersion" to "1.1.0",
+                            "operation" to call.method))
                     }
                 }
                 if (closed) watchdog.shutdown()
@@ -159,16 +162,45 @@ class MediaBridge(
     }
 
     private fun resolve(url: String, task: MediaTask): Map<String, Any?> {
-        val request = request(url).apply {
+        var source = url
+        if (TiktokPhotos.isTiktok(source)) {
+            val client = PublicWebClient(task)
+            val direct = TiktokPhotos.postId(source) != null
+            try {
+                var page = client.page(TiktokPhotos.pageUrl(source))
+                if (TiktokPhotos.postId(page.url) != null && page.url != TiktokPhotos.pageUrl(page.url)) {
+                    page = client.page(TiktokPhotos.pageUrl(page.url))
+                }
+                source = TiktokPhotos.pageUrl(page.url)
+                val album = TiktokPhotos.parse(page.html, source)
+                if (album != null) {
+                    val catalog = album.catalog()
+                    cache(url, catalog)
+                    return catalog.toMap()
+                }
+            } catch (error: Exception) {
+                task.checkActive()
+                // Do not regress existing video extraction if the public page is blocked.
+                // An explicit photo URL must never silently turn into a soundtrack/video.
+                if ("/photo/" in url || "/photo/" in source) throw error
+                if (!direct) source = url
+            }
+        }
+        runtime.ensure(task)
+        val request = request(source).apply {
             addOption("--dump-single-json")
             addOption("--skip-download")
         }
         val response = YoutubeDL.execute(request, task.processId, false, null)
         task.checkActive()
         val catalog = MediaCatalog.parse(response.out)
+        cache(url, catalog)
+        return catalog.toMap() + mapOf("engineVersion" to runtime.version)
+    }
+
+    private fun cache(url: String, catalog: MediaCatalog) {
         if (catalogs.size >= 8) catalogs.remove(catalogs.keys.first())
         catalogs[url] = catalog
-        return catalog.toMap()
     }
 
     private fun download(url: String, formatId: String, task: MediaTask): Map<String, Any> {
@@ -182,6 +214,18 @@ class MediaBridge(
         if (!directory.mkdir()) throw MediaFailure("storage", "Impossible de préparer le téléchargement.")
         try {
             task.checkActive()
+            if (catalog.photos != null) {
+                val result = PhotoDownloader(activity.applicationContext).download(catalog.photos, directory, task) { phase, percent ->
+                    emit(task, phase, percent)
+                }
+                @Suppress("UNCHECKED_CAST")
+                (result["files"] as List<Map<String, Any>>).forEach {
+                    savedUris[it["uri"] as String] = it["mimeType"] as String
+                }
+                return result
+            }
+            runtime.ensure(task)
+            FFmpeg.init(activity.applicationContext)
             val request = request(url).apply {
                 addOption("--no-simulate")
                 addOption("--newline")
@@ -249,12 +293,15 @@ class MediaBridge(
         }
     }
 
-    private fun friendlyError(error: Exception, task: MediaTask): MediaFailure {
+    private fun friendlyError(error: Exception, task: MediaTask, url: String?): MediaFailure {
+        if (error is MediaFailure && error.code == "storage_partial") return error
         if (task.timedOut.get()) return MediaFailure("timeout", "L’analyse a pris trop de temps. Réessayez.")
         if (task.cancelled.get() || error is YoutubeDL.CanceledException || error is InterruptedException)
             return MediaFailure("cancelled", "Téléchargement annulé.")
         if (error is MediaFailure) return error
         val message = error.message.orEmpty().lowercase()
+        val host = runCatching { java.net.URI(url.orEmpty()).host }.getOrNull().orEmpty()
+        if (host == "instagram.com" || host.endsWith(".instagram.com")) return InstagramErrors.classify(message)
         return when {
             "no space left" in message || "enospc" in message -> MediaFailure("storage_full", "Le stockage est plein. Libérez de l’espace et réessayez.")
             error is SecurityException -> MediaFailure("permission_denied", "Android a refusé l’accès au stockage.")

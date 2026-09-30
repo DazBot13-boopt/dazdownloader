@@ -22,6 +22,35 @@ final testDownload = DownloadedMedia(
   mimeType: 'video/mp4',
   sizeBytes: 4096,
 );
+const testPhotoFormat = MediaFormatOption(
+  id: 'photos-all',
+  format: MediaFormat.photos,
+);
+final testAlbum = MediaPreview(
+  sourceUrl: Uri.parse('https://www.tiktok.com/@test/photo/123456'),
+  title: 'Album de test',
+  author: 'Auteur',
+  platform: MediaPlatform.tiktok,
+  duration: Duration.zero,
+  formats: const [testPhotoFormat],
+  photoCount: 2,
+);
+final testPhotos = List.generate(
+  2,
+  (index) => DownloadedMedia(
+    uri: Uri.parse('content://media/external/downloads/${100 + index}'),
+    name: 'photo-${index + 1}.jpg',
+    mimeType: 'image/jpeg',
+    sizeBytes: 1024,
+  ),
+);
+final testAlbumDownload = DownloadedMedia(
+  uri: testPhotos.first.uri,
+  name: 'Album de test',
+  mimeType: 'image/jpeg',
+  sizeBytes: 2048,
+  files: testPhotos,
+);
 
 /// Explicitly a test double. Production always uses the native Android bridge.
 class TestMediaEngine implements MediaEngine {
@@ -35,6 +64,8 @@ class TestMediaEngine implements MediaEngine {
   bool opened = false;
   bool acceptCancel = true;
   MediaEngineException? resolutionError;
+  MediaPreview preview = testPreview;
+  DownloadedMedia? openedFile;
 
   @override
   Stream<MediaProgress> get progress => events.stream;
@@ -44,7 +75,7 @@ class TestMediaEngine implements MediaEngine {
     resolveCalls++;
     this.taskId = taskId;
     if (resolutionError case final error?) throw error;
-    return resolveCompleter?.future ?? testPreview;
+    return resolveCompleter?.future ?? preview;
   }
 
   @override
@@ -75,11 +106,13 @@ class TestMediaEngine implements MediaEngine {
   @override
   Future<void> open(DownloadedMedia media) async {
     opened = true;
+    openedFile = media;
   }
 
   @override
-  Future<void> update({required String taskId}) async {
+  Future<String> update({required String taskId}) async {
     updateCalls++;
+    return '2026.08.19';
   }
 
   void emit({

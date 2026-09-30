@@ -53,6 +53,10 @@ object MediaFiles {
             "webm" -> header.take(4).map { it.toInt() and 255 } == listOf(0x1a, 0x45, 0xdf, 0xa3)
             "mp3" -> String(header, 0, 3, Charsets.US_ASCII) == "ID3" ||
                 ((header[0].toInt() and 255) == 255 && (header[1].toInt() and 0xe0) == 0xe0)
+            "jpg" -> count >= 3 && header.take(3).map { it.toInt() and 255 } == listOf(255, 216, 255)
+            "png" -> count >= 8 && header.take(8).map { it.toInt() and 255 } == listOf(137, 80, 78, 71, 13, 10, 26, 10)
+            "webp" -> count >= 12 && String(header, 0, 4, Charsets.US_ASCII) == "RIFF" &&
+                String(header, 8, 4, Charsets.US_ASCII) == "WEBP"
             else -> false
         }
         if (!valid) throw MediaFailure("invalid_file",
@@ -61,19 +65,25 @@ object MediaFiles {
 }
 
 class DownloadStore(private val context: Context) {
+    data class Input(val file: File, val extension: String, val mime: String)
+
     fun save(file: File, title: String, format: NativeFormat, task: MediaTask): Map<String, Any> {
-        MediaFiles.validate(file, format.extension)
-        task.checkActive()
-        val name = "${MediaFiles.safeTitle(title)}-${task.processId.take(8)}.${format.extension}"
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveMediaStore(file, name, format.mimeType, task)
-        } else {
-            saveLegacy(file, name, format.mimeType, task)
-        }
+        return saveAll(listOf(Input(file, format.extension, format.mimeType)), title, task).single()
+    }
+
+    fun saveAll(files: List<Input>, title: String, task: MediaTask): List<Map<String, Any>> {
+        files.forEach { MediaFiles.validate(it.file, it.extension) }
+        return MediaBatch.save(task, files.mapIndexed { index, input -> {
+            val number = if (files.size == 1) "" else "-${(index + 1).toString().padStart(3, '0')}"
+            val name = "${MediaFiles.safeTitle(title)}-${task.processId.take(8)}$number.${input.extension}"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                stageMediaStore(input.file, name, input.mime, task)
+            } else stageLegacy(input.file, name, input.mime, task, index)
+        } })
     }
 
     @android.annotation.TargetApi(Build.VERSION_CODES.Q)
-    private fun saveMediaStore(file: File, name: String, mime: String, task: MediaTask): Map<String, Any> {
+    private fun stageMediaStore(file: File, name: String, mime: String, task: MediaTask): PendingMedia {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, name)
@@ -87,12 +97,15 @@ class DownloadStore(private val context: Context) {
             resolver.openOutputStream(uri)?.use { output ->
                 file.inputStream().use { copy(it, output, task) }
             } ?: throw MediaFailure("storage", "Impossible d’écrire dans Downloads.")
-            return task.commit {
-                val published = resolver.update(uri, ContentValues().apply {
-                    put(MediaStore.Downloads.IS_PENDING, 0)
-                }, null, null)
-                if (published != 1) throw MediaFailure("storage", "L’enregistrement du fichier a échoué.")
-                mapOf("uri" to uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length())
+            return object : PendingMedia {
+                override val result = mapOf("uri" to uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length())
+                override fun publish() {
+                    val published = resolver.update(uri, ContentValues().apply {
+                        put(MediaStore.Downloads.IS_PENDING, 0)
+                    }, null, null)
+                    if (published != 1) throw MediaFailure("storage", "L’enregistrement du fichier a échoué.")
+                }
+                override fun rollback() { resolver.delete(uri, null, null) }
             }
         } catch (error: Exception) {
             // This URI was created by this operation, never an existing file.
@@ -102,26 +115,35 @@ class DownloadStore(private val context: Context) {
     }
 
     @Suppress("DEPRECATION")
-    private fun saveLegacy(file: File, name: String, mime: String, task: MediaTask): Map<String, Any> {
+    private fun stageLegacy(file: File, name: String, mime: String, task: MediaTask, index: Int): PendingMedia {
         val directory = File(Environment.getExternalStoragePublicDirectory(
             Environment.DIRECTORY_DOWNLOADS), "DAZDOWNLOADER")
         if (!directory.isDirectory && !directory.mkdirs()) {
             throw MediaFailure("storage", "Impossible de créer le dossier Downloads/DAZDOWNLOADER.")
         }
         val destination = File(directory, name)
-        val partial = File(directory, ".${task.processId}.partial")
+        val partial = File(directory, ".${task.processId}-$index.partial")
         if (!partial.createNewFile()) throw MediaFailure("storage", "Un fichier temporaire existe déjà.")
         try {
             partial.outputStream().use { output -> file.inputStream().use { copy(it, output, task) } }
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.downloads", destination)
-            return task.commit {
-                if (destination.exists() || !partial.renameTo(destination)) {
-                    throw MediaFailure("storage", "Impossible de finaliser le fichier téléchargé.")
+            return object : PendingMedia {
+                private var published = false
+                override val result = mapOf("uri" to uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length())
+                override fun publish() {
+                    if (destination.exists() || !partial.renameTo(destination)) {
+                        throw MediaFailure("storage", "Impossible de finaliser le fichier téléchargé.")
+                    }
+                    published = true
                 }
-                mapOf("uri" to uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to destination.length())
+                override fun rollback() {
+                    if (partial.exists() && !partial.delete()) throw java.io.IOException("Cannot remove partial")
+                    if (published && destination.exists() && !destination.delete()) throw java.io.IOException("Cannot remove new file")
+                }
             }
-        } finally {
+        } catch (error: Exception) {
             partial.delete()
+            throw error
         }
     }
 

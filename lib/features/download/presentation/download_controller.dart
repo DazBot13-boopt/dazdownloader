@@ -35,6 +35,8 @@ class DownloadState {
     this.progress,
     this.result,
     this.error,
+    this.diagnostic,
+    this.engineVersion,
   });
 
   final DownloadStatus status;
@@ -43,6 +45,8 @@ class DownloadState {
   final MediaProgress? progress;
   final DownloadedMedia? result;
   final String? error;
+  final String? diagnostic;
+  final String? engineVersion;
 
   bool get isBusy => switch (status) {
     DownloadStatus.resolving ||
@@ -60,6 +64,7 @@ class DownloadController extends Notifier<DownloadState> {
   String? _activeTask;
   int _sequence = 0;
   bool _disposed = false;
+  String? _engineVersion;
 
   @override
   DownloadState build() {
@@ -119,11 +124,13 @@ class DownloadController extends Notifier<DownloadState> {
     state = DownloadState(status: DownloadStatus.resolving, url: uri);
     try {
       final preview = await _engine.resolve(uri, taskId: task);
+      _engineVersion = preview.engineVersion ?? _engineVersion;
       if (_disposed || _activeTask != task) return;
       state = DownloadState(
         status: DownloadStatus.ready,
         url: uri,
         preview: preview,
+        engineVersion: _engineVersion,
       );
     } catch (error) {
       _fail(task, error);
@@ -190,10 +197,10 @@ class DownloadController extends Notifier<DownloadState> {
     final task = _activeTask = _newTask();
     state = DownloadState(status: DownloadStatus.updating, url: url);
     try {
-      await _engine.update(taskId: task);
+      _engineVersion = await _engine.update(taskId: task);
       if (_disposed || _activeTask != task) return;
       _activeTask = null;
-      state = DownloadState(url: url);
+      state = DownloadState(url: url, engineVersion: _engineVersion);
       if (url != null) await resolve(url.toString(), force: true);
     } catch (error) {
       _fail(task, error);
@@ -202,8 +209,8 @@ class DownloadController extends Notifier<DownloadState> {
     }
   }
 
-  Future<void> openResult() async {
-    final result = state.result;
+  Future<void> openResult([DownloadedMedia? file]) async {
+    final result = file ?? state.result;
     if (result != null) await _engine.open(result);
   }
 
@@ -215,6 +222,8 @@ class DownloadController extends Notifier<DownloadState> {
       status: cancelled ? DownloadStatus.cancelled : DownloadStatus.failed,
       url: state.url,
       preview: state.preview,
+      diagnostic: error is MediaEngineException ? error.diagnostic : null,
+      engineVersion: _engineVersion,
       error: cancelled
           ? null
           : error is MediaEngineException

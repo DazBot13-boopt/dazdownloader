@@ -46,6 +46,7 @@ class AndroidMediaEngine implements MediaEngine {
       throw MediaEngineException(
         error.code,
         error.message ?? 'Le moteur de téléchargement a rencontré une erreur.',
+        diagnostic: _diagnostic(error),
       );
     } on MissingPluginException {
       throw const MediaEngineException(
@@ -79,6 +80,18 @@ class AndroidMediaEngine implements MediaEngine {
         throw _invalidResponse;
       }
       final seconds = (data['duration'] as num?)?.toDouble();
+      final count = (data['photoCount'] as num?)?.toInt() ?? 0;
+      final photos = formats.any(
+        (format) => format.format == MediaFormat.photos,
+      );
+      if (count < 0 ||
+          count > 100 ||
+          photos != (count > 0) ||
+          (photos &&
+              (formats.length != 1 ||
+                  MediaUrlParser.platformFor(url) != MediaPlatform.tiktok))) {
+        throw _invalidResponse;
+      }
       return MediaPreview(
         sourceUrl: url,
         title: data['title'] as String,
@@ -91,6 +104,8 @@ class AndroidMediaEngine implements MediaEngine {
         ),
         formats: formats,
         thumbnailUrl: data['thumbnail'] as String?,
+        photoCount: count,
+        engineVersion: data['engineVersion'] as String?,
       );
     } on MediaEngineException {
       rethrow;
@@ -112,14 +127,30 @@ class AndroidMediaEngine implements MediaEngine {
     });
     try {
       if (data == null) throw _invalidResponse;
-      final uri = Uri.parse(data['uri'] as String);
-      final size = (data['sizeBytes'] as num).toInt();
-      if (uri.scheme != 'content' || size <= 0) throw _invalidResponse;
+      final primary = _file(data);
+      if (!preview.isPhotoAlbum) return primary;
+      final files = (data['files'] as List)
+          .map((file) => _file(file as Map))
+          .toList(growable: false);
+      if (files.length != preview.photoCount ||
+          files.map((file) => file.uri).toSet().length != files.length ||
+          files.any(
+            (file) => !{
+              'image/jpeg',
+              'image/png',
+              'image/webp',
+            }.contains(file.mimeType),
+          ) ||
+          files.fold<int>(0, (sum, file) => sum + file.sizeBytes) !=
+              primary.sizeBytes) {
+        throw _invalidResponse;
+      }
       return DownloadedMedia(
-        uri: uri,
-        name: data['name'] as String,
-        mimeType: data['mimeType'] as String,
-        sizeBytes: size,
+        uri: primary.uri,
+        name: primary.name,
+        mimeType: primary.mimeType,
+        sizeBytes: primary.sizeBytes,
+        files: files,
       );
     } catch (_) {
       throw _invalidResponse;
@@ -137,8 +168,53 @@ class AndroidMediaEngine implements MediaEngine {
   });
 
   @override
-  Future<void> update({required String taskId}) =>
-      _invoke<void>('update', {'taskId': taskId});
+  Future<String> update({required String taskId}) async {
+    final data = await _invoke<Map>('update', {'taskId': taskId});
+    final version = data?['engineVersion'];
+    if (version is! String ||
+        !RegExp(r'^\d{4}\.\d{2}\.\d{2}').hasMatch(version)) {
+      throw _invalidResponse;
+    }
+    return version;
+  }
+
+  static DownloadedMedia _file(Map data) {
+    final uri = Uri.parse(data['uri'] as String);
+    final size = (data['sizeBytes'] as num).toInt();
+    final name = data['name'] as String;
+    final mime = data['mimeType'] as String;
+    if (uri.scheme != 'content' ||
+        uri.authority.isEmpty ||
+        size <= 0 ||
+        name.isEmpty ||
+        mime.isEmpty) {
+      throw _invalidResponse;
+    }
+    return DownloadedMedia(
+      uri: uri,
+      name: name,
+      mimeType: mime,
+      sizeBytes: size,
+    );
+  }
+
+  static String? _diagnostic(PlatformException error) {
+    final details = error.details;
+    if (details is! Map) return null;
+    // Only fixed, non-sensitive fields. Never include stderr, URLs or cookies.
+    String safe(Object? value) {
+      final text = (value?.toString() ?? 'inconnu').replaceAll(
+        RegExp(r'[^a-zA-Z0-9_. -]'),
+        '',
+      );
+      return text.substring(0, text.length.clamp(0, 80));
+    }
+
+    return 'Code : ${safe(error.code)}\n'
+        'App : ${safe(details['appVersion'])} · Android API : ${safe(details['androidApi'])}\n'
+        'Moteur : ${safe(details['engineVersion'])}\n'
+        'Opération : ${safe(details['operation'])}';
+  }
 
   static const _invalidResponse = MediaEngineException(
     'invalid_response',

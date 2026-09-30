@@ -30,10 +30,12 @@ data class MediaCatalog(
     val duration: Double?,
     val thumbnail: String?,
     val formats: List<NativeFormat>,
+    val photos: PhotoAlbum? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "title" to title, "author" to author, "duration" to duration,
         "thumbnail" to thumbnail, "formats" to formats.map { it.toMap() },
+        "photoCount" to (photos?.images?.size ?: 0),
     )
 
     companion object {
@@ -115,7 +117,7 @@ data class MediaCatalog(
 object MediaUrls {
     private val domains = setOf("youtube.com", "tiktok.com", "instagram.com",
         "snapchat.com", "x.com", "twitter.com", "facebook.com", "fb.com")
-    private val shortDomains = setOf("youtu.be", "fb.watch")
+    private val shortDomains = setOf("youtu.be", "fb.watch", "www.tiktokv.com")
 
     fun validate(value: String): String {
         val uri = runCatching { URI(value) }.getOrNull()

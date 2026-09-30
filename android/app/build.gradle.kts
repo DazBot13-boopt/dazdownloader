@@ -1,13 +1,51 @@
+import java.io.File
+import java.net.URI
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Pin the official Python zipapp; don't ship the library's 2025 extractor.
+val pinnedYtdlpVersion = "2026.08.19"
+val pinnedYtdlpSha256 = "1fa6733c37ea6fb51c99ad8fe785e7b7e5f3246c9b980230329d4fb72ed8d4d6"
+val engineResources = layout.buildDirectory.dir("generated/pinnedEngine/res")
+val preparePinnedEngine by tasks.registering {
+    val binary = engineResources.map { it.file("raw/daz_ytdlp") }
+    inputs.property("version", pinnedYtdlpVersion)
+    inputs.property("sha256", pinnedYtdlpSha256)
+    outputs.file(binary)
+    doLast {
+        val destination = binary.get().asFile
+        fun digest(file: File): String = MessageDigest.getInstance("SHA-256")
+            .digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+        if (!destination.exists() || digest(destination) != pinnedYtdlpSha256) {
+            destination.parentFile.mkdirs()
+            val temporary = File.createTempFile("engine-", ".download", destination.parentFile)
+            try {
+                val connection = URI("https://github.com/yt-dlp/yt-dlp/releases/download/$pinnedYtdlpVersion/yt-dlp").toURL().openConnection()
+                connection.connectTimeout = 15000
+                connection.readTimeout = 30000
+                connection.getInputStream().use { input -> temporary.outputStream().use { input.copyTo(it) } }
+                check(digest(temporary) == pinnedYtdlpSha256) { "Official yt-dlp checksum mismatch" }
+                Files.move(temporary.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            } finally { temporary.delete() }
+        }
+    }
+}
+
 android {
     namespace = "com.dazdownloader.dazdownloader"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+    // AGP 9 rejects Provider instances in the legacy SourceSet API. The task
+    // dependency below still guarantees that this directory exists before
+    // resources are processed.
+    sourceSets.getByName("main").res.srcDir(engineResources.get().asFile)
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -46,6 +84,8 @@ android {
         resources.excludes += setOf("META-INF/DEPENDENCIES")
     }
 }
+
+tasks.named("preBuild").configure { dependsOn(preparePinnedEngine) }
 
 dependencies {
     val mediaEngineVersion = "0.18.1"
