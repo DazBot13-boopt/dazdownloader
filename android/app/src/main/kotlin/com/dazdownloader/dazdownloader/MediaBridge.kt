@@ -3,12 +3,15 @@ package com.dazdownloader.dazdownloader
 import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.util.Log
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
@@ -59,6 +62,7 @@ class MediaBridge(
                 } else result.success(active?.takeIf { it.id == id }?.cancel() ?: false)
             }
             "open" -> open(call, result)
+            "history" -> result.success(history())
             "resolve", "download", "update" -> {
                 if (active != null || permissionRequest != null) {
                     result.error("busy", "Une opération est déjà en cours. Attendez ou annulez-la.", null)
@@ -93,6 +97,7 @@ class MediaBridge(
         }
         val task = MediaTask(taskId)
         active = task
+        if (call.method == "download") DownloadNotificationService.start(activity, task.id)
         worker.execute {
             val cancellation = watchdog.scheduleWithFixedDelay({
                 if (task.cancelled.get()) runCatching { YoutubeDL.destroyProcessById(task.processId) }
@@ -136,13 +141,63 @@ class MediaBridge(
                         else result.error(error.code, error.message, mapOf(
                             "engineVersion" to (runtime.version ?: "non démarré"),
                             "androidApi" to Build.VERSION.SDK_INT,
-                            "appVersion" to "1.1.0",
+                            "appVersion" to "1.3.0",
                             "operation" to call.method))
                     }
                 }
                 if (closed) watchdog.shutdown()
+                if (call.method == "download") {
+                    if (failure == null) DownloadNotificationService.complete(activity, "Téléchargement terminé")
+                    else DownloadNotificationService.failed(activity, failure?.message ?: "Téléchargement impossible")
+                }
             }
         }
+    }
+
+    private fun history(): List<Map<String, Any?>> {
+        val resolver = activity.contentResolver
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        } else {
+            MediaStore.Files.getContentUri("external")
+        }
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.DATE_ADDED,
+        )
+        val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            "${MediaStore.MediaColumns.RELATIVE_PATH} = ?"
+        } else {
+            "${MediaStore.MediaColumns.DATA} LIKE ?"
+        }
+        val argument = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            "${Environment.DIRECTORY_DOWNLOADS}/DAZDOWNLOADER/"
+        } else {
+            "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)}/DAZDOWNLOADER/%"
+        }
+        val result = mutableListOf<Map<String, Any?>>()
+        resolver.query(collection, projection, selection, arrayOf(argument),
+            "${MediaStore.MediaColumns.DATE_ADDED} DESC")?.use { cursor ->
+            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+            val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+            val mimeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+            val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+            val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idColumn)
+                result += mapOf(
+                    "uri" to ContentUris.withAppendedId(collection, id).toString(),
+                    "name" to cursor.getString(nameColumn),
+                    "mimeType" to cursor.getString(mimeColumn),
+                    "sizeBytes" to cursor.getLong(sizeColumn),
+                    "dateAdded" to cursor.getLong(dateColumn) * 1000,
+                )
+            }
+        }
+        return result
     }
 
     private fun requiredUrl(call: MethodCall): String =
@@ -264,6 +319,11 @@ class MediaBridge(
     }
 
     private fun emit(task: MediaTask, phase: String, percent: Double? = null, eta: Long? = null) {
+        DownloadNotificationService.update(activity, task.id, when (phase) {
+            "processing" -> "Traitement du média…"
+            "saving" -> "Enregistrement du fichier…"
+            else -> "Téléchargement en cours…"
+        }, percent)
         main.post {
             if (!closed && active === task && !task.cancelled.get()) sink?.success(mapOf(
                 "taskId" to task.id, "phase" to phase, "percent" to percent, "etaSeconds" to eta))
@@ -272,9 +332,9 @@ class MediaBridge(
 
     private fun open(call: MethodCall, result: MethodChannel.Result) {
         val value = call.argument<String>("uri")
-        val mime = value?.let { savedUris[it] }
+        val mime = value?.let { savedUris[it] } ?: call.argument<String>("mimeType")
         if (value == null || mime == null) {
-            result.error("unknown_file", "Ce fichier n’est plus disponible dans cette session.", null)
+            result.error("unknown_file", "Ce fichier n’est plus disponible.", null)
             return
         }
         try {

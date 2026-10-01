@@ -27,16 +27,18 @@ un en-tête cohérent, puis sa publication dans Downloads.
 ## Limites de cette première intégration
 
 - Android 7/API 24 minimum. Pas de moteur de téléchargement dans le navigateur.
-- Une vidéo et une opération à la fois. **Garder l'application ouverte** :
-  service en arrière-plan et reprise après arrêt du processus non implémentés.
+- Une vidéo et une opération à la fois. Le téléchargement continue en arrière-plan
+  avec une notification Android tant que le système conserve le service actif ;
+  une reprise après arrêt forcé du processus n'est pas garantie.
 - Playlists, publications multi-médias et directs en cours refusés explicitement.
   Les replays terminés peuvent être téléchargés.
 - Aucune connexion aux réseaux sociaux, aucun cookie importé, aucun contournement
   de DRM. Un lien public peut malgré tout être bloqué par la plateforme.
 - Reconnaître un domaine ne garantit pas le téléchargement de tous ses contenus :
   le support dépend des extracteurs de yt-dlp et des restrictions de la plateforme.
-- Historique persistant, partage, dossier personnalisé et préférences persistantes
-  restent à développer.
+- L'historique Android lit les fichiers enregistrés dans
+  `Downloads/DAZDOWNLOADER`. Le partage Android accepte les liens texte entrants.
+  Le dossier personnalisé et les préférences persistantes restent à développer.
 
 En cas d'échec, **Mettre à jour le moteur et réessayer** télécharge explicitement
 la version stable de yt-dlp depuis GitHub, puis refait l'analyse. Ce n'est ni une

@@ -28,11 +28,18 @@ class _AppShellState extends State<AppShell> {
     _subscription = _shareEvents.receiveBroadcastStream().listen(
       _openSharedText,
     );
-    _share.invokeMethod<String>('pending').then((text) {
+    unawaited(_readPending());
+  }
+
+  Future<void> _readPending() async {
+    try {
+      final text = await _share.invokeMethod<String>('pending');
       if (text != null) {
         _openSharedText(text);
       }
-    });
+    } on MissingPluginException {
+      // Sharing is an Android capability; web simply ignores it.
+    }
   }
 
   @override

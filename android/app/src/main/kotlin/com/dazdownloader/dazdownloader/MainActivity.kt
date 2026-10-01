@@ -1,8 +1,11 @@
 package com.dazdownloader.dazdownloader
 
+import android.Manifest
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
@@ -14,6 +17,10 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(state: android.os.Bundle?) {
         pendingSharedText = sharedText(intent)
         super.onCreate(state)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION)
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -64,4 +71,6 @@ class MainActivity : FlutterActivity() {
             ?.getStringExtra(Intent.EXTRA_TEXT)
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
+
+    companion object { private const val NOTIFICATION_PERMISSION = 4301 }
 }
