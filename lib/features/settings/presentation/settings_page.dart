@@ -68,7 +68,7 @@ class SettingsPage extends ConsumerWidget {
             child: ListTile(
               leading: Icon(Icons.info_outline),
               title: Text('Loady'),
-              subtitle: Text('Version 1.5.0 · Android'),
+              subtitle: Text('Version 1.6.0 · Android'),
             ),
           ),
         ],
