@@ -1,7 +1,7 @@
-# DAZDOWNLOADER
+# Loady
 
 Application Android Flutter de téléchargement local de médias publics accessibles.
-Pas de compte DAZDOWNLOADER, pas de serveur utilisateur ni de synchronisation cloud.
+Pas de compte Loady, pas de serveur utilisateur ni de synchronisation cloud.
 
 Le simulateur a été remplacé par **yt-dlp + FFmpeg** via
 [youtubedl-android 0.18.1](https://github.com/yausername/youtubedl-android/tree/0.18.1).
@@ -40,9 +40,36 @@ un en-tête cohérent, puis sa publication dans Downloads.
   `Downloads/DAZDOWNLOADER`. Le partage Android accepte les liens texte entrants.
   Le dossier personnalisé et les préférences persistantes restent à développer.
 
-En cas d'échec, **Mettre à jour le moteur et réessayer** télécharge explicitement
-la version stable de yt-dlp depuis GitHub, puis refait l'analyse. Ce n'est ni une
-mise à jour automatique de l'APK ni une garantie de résolution des restrictions.
+En cas d'échec, l'application propose de **redémarrer le moteur et réessayer**.
+Cela ne garantit pas la résolution des restrictions imposées par une plateforme.
+
+## Monétisation
+
+La monétisation prévue pour Loady repose sur Google AdMob. Une publicité ne
+rapporte pas par simple installation : les revenus dépendent principalement des
+impressions valides, des clics valides, du pays des utilisateurs et de l'eCPM.
+
+Plan retenu :
+
+- une bannière discrète sur l'accueil ;
+- une publicité occasionnelle à un point naturel du parcours, jamais à chaque clic ;
+- une version Loady Premium sans publicité pourra être ajoutée plus tard.
+
+Avant l'activation en production :
+
+1. créer le compte AdMob et renseigner les informations de paiement ;
+2. enregistrer Loady dans AdMob et créer les unités publicitaires Android ;
+3. ajouter l'identifiant AdMob de l'application et les identifiants d'unités dans
+   la configuration native, sans les committer dans le dépôt ;
+4. intégrer le SDK Google Mobile Ads et tester uniquement avec les identifiants
+   de test ;
+5. publier une politique de confidentialité et configurer `app-ads.txt` ;
+6. vérifier les droits de téléchargement des contenus et les règles des
+   plateformes avant la publication sur Google Play.
+
+Les identifiants AdMob ne doivent jamais être remplacés par un mot de passe ou
+une clé privée. Les achats numériques et la version Premium devront utiliser
+Google Play Billing lorsqu'ils seront ajoutés.
 
 ## Architecture
 
@@ -75,6 +102,14 @@ Depuis la racine du projet :
 ```bash
 JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 flutter build apk --release --split-per-abi
 ```
+
+Pour Google Play, publier plutôt l'Android App Bundle optimisé :
+
+```bash
+flutter build appbundle --release
+```
+
+Google Play générera ensuite les APK adaptés à l'architecture de chaque appareil.
 
 APK dans `build/app/outputs/flutter-apk/`. Pour la plupart des téléphones récents :
 `app-arm64-v8a-release.apk`. Les builds release utilisent encore la **clé de debug** :
