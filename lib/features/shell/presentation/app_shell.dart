@@ -1,21 +1,69 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
-class AppShell extends StatelessWidget {
-  const AppShell({
-    super.key,
-    required this.location,
-    required this.child,
-  });
+import '../../download/domain/media_url_parser.dart';
+
+class AppShell extends StatefulWidget {
+  const AppShell({super.key, required this.location, required this.child});
 
   final String location;
   final Widget child;
 
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  static const _share = MethodChannel('dazdownloader/share');
+  static const _shareEvents = EventChannel('dazdownloader/share/events');
+  StreamSubscription<Object?>? _subscription;
+  String? _lastLink;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = _shareEvents.receiveBroadcastStream().listen(
+      _openSharedText,
+    );
+    _share.invokeMethod<String>('pending').then((text) {
+      if (text != null) {
+        _openSharedText(text);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  void _openSharedText(Object? value) {
+    if (!mounted || value is! String) return;
+    final raw = value.trim();
+    final match = RegExp(
+      r'https?://[^\s]+',
+      caseSensitive: false,
+    ).firstMatch(raw);
+    final candidate = match?.group(0)?.replaceAll(RegExp(r'[),.!?]+$'), '');
+    final uri = MediaUrlParser.parse(candidate ?? raw);
+    if (uri == null || uri.toString() == _lastLink) return;
+    _lastLink = uri.toString();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.push('/download?url=${Uri.encodeComponent(uri.toString())}');
+      }
+    });
+  }
+
   int get _selectedIndex {
-    if (location.startsWith('/history')) {
+    if (widget.location.startsWith('/history')) {
       return 1;
     }
-    if (location.startsWith('/settings')) {
+    if (widget.location.startsWith('/settings')) {
       return 2;
     }
     return 0;
@@ -24,7 +72,7 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: child,
+      body: widget.child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
