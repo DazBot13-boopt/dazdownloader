@@ -243,7 +243,7 @@ class _HeroPill extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Theme.of(context).colorScheme.primary,
             fontSize: 10,
             fontWeight: FontWeight.w800,
