@@ -9,8 +9,8 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final themeMode = ref.watch(themeModeProvider);
-    final isDark = themeMode == ThemeMode.dark;
+    ref.watch(themeModeProvider);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Réglages')),
@@ -30,12 +30,13 @@ class SettingsPage extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.palette_outlined),
                   title: const Text('Mode sombre'),
-                  subtitle: const Text('Adapter l’interface à votre environnement.'),
+                  subtitle: const Text(
+                    'Adapter l’interface à votre environnement.',
+                  ),
                   trailing: Switch(
                     value: isDark,
-                    onChanged: (value) => ref
-                        .read(themeModeProvider.notifier)
-                        .setDarkMode(value),
+                    onChanged: (value) =>
+                        ref.read(themeModeProvider.notifier).setDarkMode(value),
                   ),
                 ),
                 const Divider(height: 1),
@@ -67,7 +68,7 @@ class SettingsPage extends ConsumerWidget {
             child: ListTile(
               leading: Icon(Icons.info_outline),
               title: Text('DAZDOWNLOADER'),
-              subtitle: Text('Version 1.4.0 · Android'),
+              subtitle: Text('Version 1.5.0 · Android'),
             ),
           ),
         ],

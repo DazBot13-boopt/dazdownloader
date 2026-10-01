@@ -11,16 +11,47 @@ class AppTheme {
   static final dark = _build(Brightness.dark);
 
   static ThemeData _build(Brightness brightness) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: primary,
-      brightness: brightness,
-    ).copyWith(secondary: secondary, tertiary: accent, error: error);
+    final dark = brightness == Brightness.dark;
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: primary,
+          brightness: brightness,
+        ).copyWith(
+          primary: primary,
+          onPrimary: Colors.white,
+          secondary: secondary,
+          onSecondary: Colors.white,
+          tertiary: accent,
+          error: error,
+          surface: dark ? const Color(0xFF0B0D12) : const Color(0xFFF6F8FC),
+          surfaceContainerLowest: dark ? const Color(0xFF080A0F) : Colors.white,
+          surfaceContainerLow: dark
+              ? const Color(0xFF0E1118)
+              : const Color(0xFFF1F4F9),
+          surfaceContainer: dark
+              ? const Color(0xFF121721)
+              : const Color(0xFFEBEFF6),
+          surfaceContainerHigh: dark
+              ? const Color(0xFF171E2A)
+              : const Color(0xFFE3E8F1),
+          surfaceContainerHighest: dark
+              ? const Color(0xFF1D2635)
+              : const Color(0xFFDCE3EE),
+          onSurface: dark ? const Color(0xFFF5F7FF) : const Color(0xFF10131A),
+          onSurfaceVariant: dark
+              ? const Color(0xFFAAB5C8)
+              : const Color(0xFF536176),
+          outline: dark ? const Color(0xFF3B485D) : const Color(0xFF9AA8BB),
+          outlineVariant: dark
+              ? const Color(0xFF273142)
+              : const Color(0xFFD0D8E4),
+        );
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: brightness == Brightness.dark
+      scaffoldBackgroundColor: dark
           ? const Color(0xFF0B0D12)
           : const Color(0xFFF5F7FB),
       fontFamily: 'Roboto',
@@ -32,7 +63,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest.withAlpha(120),
+        fillColor: scheme.surfaceContainerHigh,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
@@ -51,9 +82,7 @@ class AppTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: brightness == Brightness.dark
-            ? const Color(0xFF11151D)
-            : Colors.white,
+        backgroundColor: dark ? const Color(0xFF11151D) : Colors.white,
         indicatorColor: scheme.primary.withAlpha(35),
         labelTextStyle: WidgetStatePropertyAll(
           TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -74,6 +103,11 @@ class AppTheme {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: scheme.outlineVariant.withAlpha(75)),
         ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant,
+        space: 1,
+        thickness: 1,
       ),
     );
   }

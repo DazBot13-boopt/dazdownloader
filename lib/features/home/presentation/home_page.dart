@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -360,6 +361,15 @@ class _PlatformCard extends StatelessWidget {
   final MediaPlatform platform;
   final VoidCallback onTap;
 
+  FaIconData get _icon => switch (platform) {
+    MediaPlatform.youtube => FontAwesomeIcons.youtube,
+    MediaPlatform.tiktok => FontAwesomeIcons.tiktok,
+    MediaPlatform.instagram => FontAwesomeIcons.instagram,
+    MediaPlatform.snapchat => FontAwesomeIcons.snapchat,
+    MediaPlatform.x => FontAwesomeIcons.xTwitter,
+    MediaPlatform.facebook => FontAwesomeIcons.facebookF,
+  };
+
   Color get _color => switch (platform) {
     MediaPlatform.youtube => const Color(0xFFFF375F),
     MediaPlatform.tiktok => const Color(0xFF00C7BE),
@@ -388,7 +398,7 @@ class _PlatformCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(color: _color.withAlpha(35)),
                 ),
-                child: _PlatformLogo(platform: platform, color: _color),
+                child: FaIcon(_icon, color: _color, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -405,143 +415,6 @@ class _PlatformCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _PlatformLogo extends StatelessWidget {
-  const _PlatformLogo({required this.platform, required this.color});
-
-  final MediaPlatform platform;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    switch (platform) {
-      case MediaPlatform.youtube:
-        return Container(
-          width: 27,
-          height: 19,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Icon(
-            Icons.play_arrow_rounded,
-            color: Colors.white,
-            size: 17,
-          ),
-        );
-      case MediaPlatform.tiktok:
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Transform.translate(
-              offset: const Offset(-2, 1),
-              child: Text(
-                '♪',
-                style: TextStyle(
-                  color: color.withAlpha(150),
-                  fontSize: 27,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Transform.translate(
-              offset: const Offset(2, -1),
-              child: const Text(
-                '♪',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 27,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        );
-      case MediaPlatform.instagram:
-        return Container(
-          width: 25,
-          height: 25,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFEDA75), Color(0xFFD62976), Color(0xFF4F5BD5)],
-              begin: Alignment.bottomLeft,
-              end: Alignment.topRight,
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 2),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: const Stack(
-                children: [
-                  Center(
-                    child: SizedBox(
-                      width: 7,
-                      height: 7,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.fromBorderSide(
-                            BorderSide(color: Colors.white, width: 1.5),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 1,
-                    right: 1,
-                    child: SizedBox(
-                      width: 3,
-                      height: 3,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      case MediaPlatform.snapchat:
-        return Icon(Icons.face_3_rounded, color: color, size: 27);
-      case MediaPlatform.x:
-        return Text(
-          '𝕏',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 25,
-            fontWeight: FontWeight.w800,
-          ),
-        );
-      case MediaPlatform.facebook:
-        return Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: const Center(
-            child: Text(
-              'f',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                height: .95,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        );
-    }
   }
 }
 
