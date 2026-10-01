@@ -8,7 +8,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: DazDownloaderApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('DAZDOWNLOADER'), findsOneWidget);
+    expect(find.text('Loady'), findsOneWidget);
     expect(find.text('Analyser le lien'), findsOneWidget);
     expect(find.text('Plateformes prises en charge'), findsOneWidget);
   });

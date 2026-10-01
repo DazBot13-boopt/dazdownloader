@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Compact DAZDOWNLOADER brand symbol used in the app and empty states.
+/// Compact Loady brand symbol used in the app and empty states.
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.size = 56, this.dark = false});
 
@@ -43,36 +43,30 @@ class _BrandMarkPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final white = Paint()
       ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * .105
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+      ..style = PaintingStyle.fill;
     final path = Path()
-      ..moveTo(size.width * .31, size.height * .25)
-      ..lineTo(size.width * .31, size.height * .75)
-      ..lineTo(size.width * .57, size.height * .75)
-      ..quadraticBezierTo(
-        size.width * .77,
-        size.height * .75,
-        size.width * .77,
-        size.height * .50,
-      )
-      ..quadraticBezierTo(
-        size.width * .77,
-        size.height * .25,
-        size.width * .57,
-        size.height * .25,
-      )
+      ..moveTo(size.width * .30, size.height * .24)
+      ..lineTo(size.width * .43, size.height * .24)
+      ..lineTo(size.width * .43, size.height * .68)
+      ..lineTo(size.width * .70, size.height * .68)
+      ..lineTo(size.width * .70, size.height * .80)
+      ..lineTo(size.width * .30, size.height * .80)
       ..close();
     canvas.drawPath(path, white);
 
     final arrow = Path()
-      ..moveTo(size.width * .56, size.height * .36)
-      ..lineTo(size.width * .56, size.height * .63)
-      ..moveTo(size.width * .45, size.height * .53)
-      ..lineTo(size.width * .56, size.height * .64)
-      ..lineTo(size.width * .67, size.height * .53);
-    canvas.drawPath(arrow, white);
+      ..moveTo(size.width * .56, size.height * .30)
+      ..lineTo(size.width * .56, size.height * .57)
+      ..lineTo(size.width * .46, size.height * .48)
+      ..lineTo(size.width * .38, size.height * .56)
+      ..lineTo(size.width * .62, size.height * .80)
+      ..lineTo(size.width * .86, size.height * .56)
+      ..lineTo(size.width * .78, size.height * .48)
+      ..lineTo(size.width * .68, size.height * .57)
+      ..lineTo(size.width * .68, size.height * .30)
+      ..close();
+    final arrowFill = Paint()..color = Colors.white;
+    canvas.drawPath(arrow, arrowFill);
   }
 
   @override

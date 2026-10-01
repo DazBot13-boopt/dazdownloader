@@ -44,7 +44,7 @@ class DownloadNotificationService : Service() {
         )
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(com.dazdownloader.dazdownloader.R.drawable.ic_launcher)
-            .setContentTitle("DAZDOWNLOADER")
+            .setContentTitle("Loady")
             .setContentText(text)
             .setContentIntent(open)
             .setOngoing(ongoing)

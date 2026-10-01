@@ -245,7 +245,7 @@ class _TransferStatus extends ConsumerWidget {
     final controller = ref.read(downloadControllerProvider.notifier);
     final label = switch (state.status) {
       DownloadStatus.resolving => 'Analyse du lien et des formats disponibles…',
-      DownloadStatus.updating => 'Mise à jour du moteur depuis GitHub…',
+      DownloadStatus.updating => 'Redémarrage du moteur…',
       DownloadStatus.downloading =>
         state.preview?.isPhotoAlbum == true
             ? 'Téléchargement des photos…'
@@ -322,7 +322,7 @@ class _TransferStatus extends ConsumerWidget {
               TextButton.icon(
                 onPressed: controller.updateEngine,
                 icon: const Icon(Icons.system_update_alt),
-                label: const Text('Mettre à jour le moteur et réessayer'),
+                label: const Text('Redémarrer le moteur et réessayer'),
               ),
           ],
           if (state.engineVersion != null)

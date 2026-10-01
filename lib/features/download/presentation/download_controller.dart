@@ -228,7 +228,7 @@ class DownloadController extends Notifier<DownloadState> {
           ? null
           : error is MediaEngineException
           ? error.message
-          : 'Une erreur inattendue est survenue. Réessayez.',
+          : 'Une erreur inattendue est survenue. Redémarrez le moteur et réessayez.',
     );
   }
 }

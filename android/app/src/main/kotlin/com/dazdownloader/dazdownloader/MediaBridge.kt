@@ -371,8 +371,8 @@ class MediaBridge(
             "requested format" in message -> MediaFailure("format_expired", "Le format a changé. Analysez à nouveau le lien.")
             "drm" in message -> MediaFailure("drm", "Ce média est protégé et ne peut pas être téléchargé.")
             listOf("timed out", "unable to download", "network", "resolve", "http error").any { it in message } ->
-                MediaFailure("network", "La plateforme ou le réseau a refusé la requête. Réessayez plus tard ou mettez à jour le moteur.")
-            else -> MediaFailure("engine_error", "Le moteur n’a pas pu traiter ce lien. Réessayez ou mettez à jour le moteur.")
+                MediaFailure("network", "La plateforme ou le réseau a refusé la requête. Réessayez plus tard ou redémarrez le moteur.")
+            else -> MediaFailure("engine_error", "Le moteur n’a pas pu traiter ce lien. Redémarrez le moteur et réessayez.")
         }
     }
 

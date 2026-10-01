@@ -191,7 +191,7 @@ class _HeroHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'DAZDOWNLOADER',
+                'Loady',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w900,
                   letterSpacing: .2,
@@ -321,14 +321,13 @@ class _PlatformCard extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: _color.withAlpha(24),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: _color.withAlpha(35)),
+                  color: _color.withAlpha(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: FaIcon(_icon, color: _color, size: 24),
+                child: FaIcon(_icon, color: _color, size: 21),
               ),
               const SizedBox(width: 12),
               Expanded(

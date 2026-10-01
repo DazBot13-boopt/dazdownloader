@@ -67,7 +67,7 @@ class SettingsPage extends ConsumerWidget {
           const Card(
             child: ListTile(
               leading: Icon(Icons.info_outline),
-              title: Text('DAZDOWNLOADER'),
+              title: Text('Loady'),
               subtitle: Text('Version 1.5.0 · Android'),
             ),
           ),
