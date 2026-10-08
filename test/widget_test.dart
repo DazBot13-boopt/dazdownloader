@@ -8,8 +8,8 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: DazDownloaderApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Loady'), findsOneWidget);
+    expect(find.text('LOADY'), findsOneWidget);
     expect(find.text('Analyser le lien'), findsOneWidget);
-    expect(find.text('Plateformes prises en charge'), findsOneWidget);
+    expect(find.text('Vos plateformes préférées'), findsOneWidget);
   });
 }
