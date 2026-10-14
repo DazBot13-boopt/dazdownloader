@@ -61,13 +61,22 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final width = MediaQuery.sizeOf(context).width;
-    final horizontalPadding = width >= 900 ? 40.0 : width >= 600 ? 28.0 : 18.0;
+    final horizontalPadding = width >= 900
+        ? 40.0
+        : width >= 600
+        ? 28.0
+        : 18.0;
     final columns = width >= 900 ? 3 : 2;
 
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(horizontalPadding, 18, horizontalPadding, 30),
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            18,
+            horizontalPadding,
+            30,
+          ),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 960),
@@ -147,38 +156,48 @@ class _BrandHeader extends StatelessWidget {
       children: [
         const BrandMark(size: 42),
         const SizedBox(width: 11),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'LOADY',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.15,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'LOADY',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.15,
+                ),
               ),
-            ),
-            Text(
-              'VOTRE MÉDIA, VOTRE ESPACE',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: muted,
-                fontWeight: FontWeight.w700,
-                letterSpacing: .8,
+              Text(
+                'VOTRE MÉDIA, VOTRE ESPACE',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: muted,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .8,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const Spacer(),
+        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(99),
-            border: Border.all(color: theme.colorScheme.outlineVariant.withAlpha(110)),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withAlpha(110),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.shield_outlined, size: 15, color: theme.colorScheme.primary),
+              Icon(
+                Icons.shield_outlined,
+                size: 15,
+                color: theme.colorScheme.primary,
+              ),
               const SizedBox(width: 6),
               Text(
                 'PRIVÉ',
@@ -275,10 +294,8 @@ class _DownloadHero extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Collez un lien public et enregistrez votre média directement sur cet appareil.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: subInk,
-              height: 1.45,
-            ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: subInk, height: 1.45),
           ),
           const SizedBox(height: 20),
           Container(
@@ -294,26 +311,36 @@ class _DownloadHero extends StatelessWidget {
                 ),
               ],
             ),
-            child: TextField(
-              controller: controller,
-              keyboardType: TextInputType.url,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => onSubmit(),
-              decoration: InputDecoration(
-                hintText: 'Collez l’URL de votre média…',
-                hintStyle: TextStyle(color: subInk.withAlpha(180)),
-                prefixIcon: Icon(Icons.link_rounded, color: scheme.primary),
-                suffixIcon: IconButton(
+            child: Row(
+              children: [
+                const SizedBox(width: 15),
+                Icon(Icons.link_rounded, color: scheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => onSubmit(),
+                    decoration: InputDecoration(
+                      hintText: 'Collez un lien…',
+                      hintStyle: TextStyle(color: subInk.withAlpha(180)),
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 17),
+                    ),
+                  ),
+                ),
+                IconButton(
                   onPressed: onPaste,
                   tooltip: 'Coller le lien',
                   icon: Icon(Icons.content_paste_rounded, color: subInk),
                 ),
-                filled: false,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 17),
-              ),
+                const SizedBox(width: 4),
+              ],
             ),
           ),
           const SizedBox(height: 11),
@@ -341,10 +368,8 @@ class _DownloadHero extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Aucun compte. Aucun cloud. Vos fichiers restent chez vous.',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: subInk,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: subInk, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -502,7 +527,9 @@ class _EmptyHistoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: theme.colorScheme.outlineVariant.withAlpha(100)),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withAlpha(100),
+        ),
       ),
       child: Row(
         children: [
@@ -514,7 +541,10 @@ class _EmptyHistoryCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(15),
             ),
             alignment: Alignment.center,
-            child: Icon(Icons.history_rounded, color: theme.colorScheme.primary),
+            child: Icon(
+              Icons.history_rounded,
+              color: theme.colorScheme.primary,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(

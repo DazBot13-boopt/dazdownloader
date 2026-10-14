@@ -3,12 +3,16 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/android_media_engine.dart';
+import '../data/download_session_store.dart';
 import '../domain/media_engine.dart';
 import '../domain/media_models.dart';
 import '../domain/media_url_parser.dart';
 
 final mediaEngineProvider = Provider<MediaEngine>(
   (ref) => AndroidMediaEngine(),
+);
+final downloadSessionStoreProvider = Provider<DownloadSessionStore>(
+  (ref) => DownloadSessionStore(),
 );
 final downloadControllerProvider =
     NotifierProvider<DownloadController, DownloadState>(DownloadController.new);
@@ -37,6 +41,7 @@ class DownloadState {
     this.error,
     this.diagnostic,
     this.engineVersion,
+    this.restored = false,
   });
 
   final DownloadStatus status;
@@ -47,6 +52,7 @@ class DownloadState {
   final String? error;
   final String? diagnostic;
   final String? engineVersion;
+  final bool restored;
 
   bool get isBusy => switch (status) {
     DownloadStatus.resolving ||
@@ -65,10 +71,12 @@ class DownloadController extends Notifier<DownloadState> {
   int _sequence = 0;
   bool _disposed = false;
   String? _engineVersion;
+  late DownloadSessionStore _sessionStore;
 
   @override
   DownloadState build() {
     _engine = ref.read(mediaEngineProvider);
+    _sessionStore = ref.read(downloadSessionStoreProvider);
     final subscription = _engine.progress.listen(
       _onProgress,
       onError: (_) {
@@ -83,7 +91,16 @@ class DownloadController extends Notifier<DownloadState> {
         unawaited(_engine.cancel(task).then<void>((_) {}, onError: (_, _) {}));
       }
     });
+    unawaited(_restorePendingAnalysis());
     return const DownloadState();
+  }
+
+  Future<void> _restorePendingAnalysis() async {
+    final rawUrl = await _sessionStore.readPendingUrl();
+    if (_disposed || rawUrl == null || rawUrl.isEmpty || state.url != null) {
+      return;
+    }
+    await resolve(rawUrl, force: true, restored: true);
   }
 
   String _newTask() =>
@@ -107,7 +124,11 @@ class DownloadController extends Notifier<DownloadState> {
     );
   }
 
-  Future<void> resolve(String rawUrl, {bool force = false}) async {
+  Future<void> resolve(
+    String rawUrl, {
+    bool force = false,
+    bool restored = false,
+  }) async {
     if (state.isBusy) return; // One native operation at a time.
     final uri = MediaUrlParser.parse(rawUrl);
     if (uri == null) {
@@ -120,8 +141,13 @@ class DownloadController extends Notifier<DownloadState> {
       return;
     }
     if (!force && state.preview != null && state.url == uri) return;
+    unawaited(_sessionStore.savePendingUrl(uri.toString()));
     final task = _activeTask = _newTask();
-    state = DownloadState(status: DownloadStatus.resolving, url: uri);
+    state = DownloadState(
+      status: DownloadStatus.resolving,
+      url: uri,
+      restored: restored || state.restored,
+    );
     try {
       final preview = await _engine.resolve(uri, taskId: task);
       _engineVersion = preview.engineVersion ?? _engineVersion;
@@ -131,6 +157,7 @@ class DownloadController extends Notifier<DownloadState> {
         url: uri,
         preview: preview,
         engineVersion: _engineVersion,
+        restored: state.restored,
       );
     } catch (error) {
       _fail(task, error);
@@ -200,13 +227,34 @@ class DownloadController extends Notifier<DownloadState> {
       _engineVersion = await _engine.update(taskId: task);
       if (_disposed || _activeTask != task) return;
       _activeTask = null;
-      state = DownloadState(url: url, engineVersion: _engineVersion);
+      // `resolve` deliberately refuses concurrent operations. Publish an idle
+      // state before starting the fresh analysis, otherwise the retry would be
+      // ignored while the controller still appears to be updating.
+      state = DownloadState(
+        url: url,
+        engineVersion: _engineVersion,
+        restored: state.restored,
+      );
       if (url != null) await resolve(url.toString(), force: true);
     } catch (error) {
       _fail(task, error);
     } finally {
       if (_activeTask == task) _activeTask = null;
     }
+  }
+
+  void consumeRestoreNavigation() {
+    if (!state.restored) return;
+    state = DownloadState(
+      status: state.status,
+      url: state.url,
+      preview: state.preview,
+      progress: state.progress,
+      result: state.result,
+      error: state.error,
+      diagnostic: state.diagnostic,
+      engineVersion: state.engineVersion,
+    );
   }
 
   Future<void> openResult([DownloadedMedia? file]) async {

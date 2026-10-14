@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dazdownloader/features/download/domain/media_engine.dart';
 import 'package:dazdownloader/features/download/domain/media_models.dart';
+import 'package:dazdownloader/features/download/data/download_session_store.dart';
 import 'package:dazdownloader/features/download/presentation/download_controller.dart';
 
 import 'support/test_media_engine.dart';
@@ -168,4 +169,50 @@ void main() {
       expect(state().diagnostic, 'Code : instagram_limited');
     },
   );
+
+  test('replays the saved analysis after the application is rebuilt', () async {
+    const savedUrl = 'https://www.youtube.com/watch?v=test';
+    final restoredContainer = ProviderContainer(
+      overrides: [
+        mediaEngineProvider.overrideWithValue(engine),
+        downloadSessionStoreProvider.overrideWithValue(
+          _MemorySessionStore(savedUrl),
+        ),
+      ],
+    );
+    addTearDown(restoredContainer.dispose);
+
+    // Building the provider begins the asynchronous restoration.
+    restoredContainer.read(downloadControllerProvider);
+    await Future<void>.delayed(Duration.zero);
+
+    final restored = restoredContainer.read(downloadControllerProvider);
+    expect(engine.resolveCalls, 1);
+    expect(restored.status, DownloadStatus.ready);
+    expect(restored.url, Uri.parse(savedUrl));
+    expect(restored.preview, same(testPreview));
+    expect(restored.restored, isTrue);
+
+    restoredContainer
+        .read(downloadControllerProvider.notifier)
+        .consumeRestoreNavigation();
+    expect(
+      restoredContainer.read(downloadControllerProvider).restored,
+      isFalse,
+    );
+  });
+}
+
+class _MemorySessionStore extends DownloadSessionStore {
+  _MemorySessionStore(this.value);
+
+  String? value;
+
+  @override
+  Future<String?> readPendingUrl() async => value;
+
+  @override
+  Future<void> savePendingUrl(String url) async {
+    value = url;
+  }
 }

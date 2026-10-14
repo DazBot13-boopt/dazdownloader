@@ -2,21 +2,23 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../download/domain/media_url_parser.dart';
+import '../../download/presentation/download_controller.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.location, required this.child});
 
   final String location;
   final Widget child;
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   static const _share = MethodChannel('dazdownloader/share');
   static const _shareEvents = EventChannel('dazdownloader/share/events');
   StreamSubscription<Object?>? _subscription;
@@ -78,6 +80,15 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(downloadControllerProvider, (previous, next) {
+      if (!next.restored ||
+          next.url == null ||
+          widget.location == '/download') {
+        return;
+      }
+      ref.read(downloadControllerProvider.notifier).consumeRestoreNavigation();
+      context.push('/download?url=${Uri.encodeComponent(next.url.toString())}');
+    });
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: NavigationBar(

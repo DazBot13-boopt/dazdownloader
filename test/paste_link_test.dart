@@ -26,6 +26,9 @@ void main() {
       });
       messenger.setMockMethodCallHandler(events, (_) async => null);
       messenger.setMockMethodCallHandler(methods, (call) async {
+        if (call.method == 'update') {
+          return {'engineVersion': '2026.10.14'};
+        }
         expect(call.method, 'resolve');
         expect(call.arguments['url'], url);
         resolveCalls++;
@@ -68,8 +71,10 @@ void main() {
       expect(find.text('Téléchargement terminé'), findsNothing);
       expect(tester.takeException(), isNull);
 
-      await tester.ensureVisible(find.text('Réessayer l’analyse'));
-      await tester.tap(find.text('Réessayer l’analyse'));
+      await tester.ensureVisible(
+        find.text('Redémarrer le moteur et réessayer'),
+      );
+      await tester.tap(find.text('Redémarrer le moteur et réessayer'));
       await tester.pumpAndSettle();
       expect(resolveCalls, 2);
       expect(find.text(message), findsOneWidget);
