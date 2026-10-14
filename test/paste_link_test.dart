@@ -26,6 +26,7 @@ void main() {
       });
       messenger.setMockMethodCallHandler(events, (_) async => null);
       messenger.setMockMethodCallHandler(methods, (call) async {
+        if (call.method == 'transferStatus') return null;
         if (call.method == 'update') {
           return {'engineVersion': '2026.10.14'};
         }

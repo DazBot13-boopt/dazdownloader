@@ -11,6 +11,23 @@ abstract interface class MediaEngine {
   Future<bool> cancel(String taskId);
   Future<void> open(DownloadedMedia media);
   Future<String> update({required String taskId});
+  Future<TransferSnapshot?> lastTransfer();
+}
+
+class TransferSnapshot {
+  const TransferSnapshot({
+    required this.taskId,
+    required this.state,
+    this.url,
+    this.message,
+    this.result,
+  });
+
+  final String taskId;
+  final String state;
+  final Uri? url;
+  final String? message;
+  final DownloadedMedia? result;
 }
 
 class MediaEngineException implements Exception {

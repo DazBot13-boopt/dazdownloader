@@ -91,8 +91,43 @@ class DownloadController extends Notifier<DownloadState> {
         unawaited(_engine.cancel(task).then<void>((_) {}, onError: (_, _) {}));
       }
     });
-    unawaited(_restorePendingAnalysis());
+    unawaited(_restoreSession());
     return const DownloadState();
+  }
+
+  Future<void> _restoreSession() async {
+    await _restoreLastTransfer();
+    if (state.url == null) await _restorePendingAnalysis();
+  }
+
+  Future<void> _restoreLastTransfer() async {
+    try {
+      final transfer = await _engine.lastTransfer();
+      if (_disposed ||
+          transfer == null ||
+          transfer.url == null ||
+          state.url != null) {
+        return;
+      }
+      if (transfer.state == 'completed' && transfer.result != null) {
+        state = DownloadState(
+          status: DownloadStatus.completed,
+          url: transfer.url,
+          result: transfer.result,
+          restored: true,
+        );
+      } else if (transfer.state == 'failed') {
+        state = DownloadState(
+          status: DownloadStatus.failed,
+          url: transfer.url,
+          error: transfer.message ?? 'Le dernier téléchargement a échoué.',
+          restored: true,
+        );
+      }
+    } on MediaEngineException {
+      // The transfer journal is supplemental. Pending analysis restoration is
+      // still available if an older Android engine does not expose it.
+    }
   }
 
   Future<void> _restorePendingAnalysis() async {

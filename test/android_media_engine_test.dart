@@ -222,6 +222,25 @@ void main() {
     );
   });
 
+  test('restores only a complete persisted native transfer', () async {
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      expect(call.method, 'transferStatus');
+      return {
+        'taskId': 'native-task',
+        'state': 'completed',
+        'url': testPreview.sourceUrl.toString(),
+        'uri': testDownload.uri.toString(),
+        'name': testDownload.name,
+        'mimeType': testDownload.mimeType,
+        'sizeBytes': testDownload.sizeBytes,
+      };
+    });
+    final transfer = await engine.lastTransfer();
+    expect(transfer?.taskId, 'native-task');
+    expect(transfer?.state, 'completed');
+    expect(transfer?.result?.uri, testDownload.uri);
+  });
+
   test('diagnostic exposes fixed metadata but not stderr or URLs', () async {
     messenger.setMockMethodCallHandler(channel, (_) async {
       throw PlatformException(
