@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.StatFs
 import android.provider.MediaStore
 import android.util.Log
 import com.yausername.ffmpeg.FFmpeg
@@ -35,10 +36,12 @@ class MediaBridge(
     private val worker = Executors.newSingleThreadExecutor()
     private val watchdog = Executors.newSingleThreadScheduledExecutor()
     private val runtime = EngineRuntime(activity.applicationContext)
+    private val journal = TransferJournal(activity.applicationContext)
     private val catalogs = linkedMapOf<String, MediaCatalog>() // Worker thread only.
     private val savedUris = ConcurrentHashMap<String, String>()
     private var sink: EventChannel.EventSink? = null
     @Volatile private var active: MediaTask? = null
+    @Volatile private var activeOperation: String? = null
     @Volatile private var closed = false
     private var permissionRequest: Pair<MethodCall, MethodChannel.Result>? = null
 
@@ -63,6 +66,7 @@ class MediaBridge(
             }
             "open" -> open(call, result)
             "history" -> result.success(history())
+            "transferStatus" -> result.success(journal.snapshot())
             "resolve", "download", "update" -> {
                 if (active != null || permissionRequest != null) {
                     result.error("busy", "Une opération est déjà en cours. Attendez ou annulez-la.", null)
@@ -97,7 +101,11 @@ class MediaBridge(
         }
         val task = MediaTask(taskId)
         active = task
-        if (call.method == "download") DownloadNotificationService.start(activity, task.id)
+        activeOperation = call.method
+        if (call.method == "download") {
+            journal.start(task.id, requiredUrl(call))
+            DownloadNotificationService.start(activity, task.id)
+        }
         worker.execute {
             val cancellation = watchdog.scheduleWithFixedDelay({
                 if (task.cancelled.get()) runCatching { YoutubeDL.destroyProcessById(task.processId) }
@@ -134,7 +142,10 @@ class MediaBridge(
                 cancellation.cancel(false)
                 deadline?.cancel(false)
                 main.post {
-                    if (active === task) active = null
+                    if (active === task) {
+                        active = null
+                        activeOperation = null
+                    }
                     if (!closed) {
                         val error = failure
                         if (error == null) result.success(value)
@@ -147,8 +158,15 @@ class MediaBridge(
                 }
                 if (closed) watchdog.shutdown()
                 if (call.method == "download") {
-                    if (failure == null) DownloadNotificationService.complete(activity, "Téléchargement terminé")
-                    else DownloadNotificationService.failed(activity, failure?.message ?: "Téléchargement impossible")
+                    if (failure == null) {
+                        @Suppress("UNCHECKED_CAST")
+                        journal.finish(task.id, value as? Map<String, Any>)
+                        DownloadNotificationService.complete(activity, "Téléchargement terminé")
+                    } else {
+                        if (failure?.code == "cancelled") journal.cancelled(task.id)
+                        else journal.fail(task.id, failure?.message ?: "Téléchargement impossible")
+                        DownloadNotificationService.failed(activity, failure?.message ?: "Téléchargement impossible")
+                    }
                 }
             }
         }
@@ -263,10 +281,21 @@ class MediaBridge(
             "L’aperçu a expiré. Analysez à nouveau le lien.")
         val format = catalog.formats.singleOrNull { it.id == formatId }
             ?: throw MediaFailure("invalid_format", "Ce format n’est pas disponible. Analysez à nouveau le lien.")
-        val root = File(activity.cacheDir, "media-downloads")
+        // Keep partial fragments outside the disposable cache. yt-dlp can resume
+        // them after a transient network failure while the foreground service
+        // keeps the process alive in the background.
+        val root = File(activity.filesDir, "media-downloads")
         if (!root.isDirectory && !root.mkdirs()) throw MediaFailure("storage", "Impossible de créer le fichier temporaire.")
-        val directory = File(root, task.processId)
-        if (!directory.mkdir()) throw MediaFailure("storage", "Impossible de préparer le téléchargement.")
+        val directory = File(root, task.id.replace(Regex("[^a-zA-Z0-9._-]"), "_"))
+        if (!directory.isDirectory && !directory.mkdirs()) throw MediaFailure("storage", "Impossible de préparer le téléchargement.")
+        format.sizeBytes?.let { expected ->
+            val available = StatFs(directory.absolutePath).availableBytes
+            // Leave room for the temporary fragments and MediaStore publication.
+            if (available < expected + 20L * 1024 * 1024) {
+                throw MediaFailure("storage_full", "L’espace disponible est insuffisant pour ce téléchargement.")
+            }
+        }
+        var failure: Exception? = null
         try {
             task.checkActive()
             if (catalog.photos != null) {
@@ -286,6 +315,8 @@ class MediaBridge(
                 addOption("--newline")
                 addOption("--no-mtime")
                 addOption("--no-overwrites")
+                addOption("--continue")
+                addOption("--part")
                 addOption("--match-filter", "!is_live")
                 addOption("-f", format.selector)
                 addOption("-o", File(directory, "media.%(ext)s").absolutePath)
@@ -299,26 +330,54 @@ class MediaBridge(
                 }
             }
             emit(task, "downloading")
-            YoutubeDL.execute(request, task.processId, false) { percent, eta, line ->
-                val processing = line.startsWith("[Merger]") || line.startsWith("[ExtractAudio]") ||
-                    line.startsWith("[VideoRemuxer]") || line.startsWith("[Fixup")
-                emit(task, if (processing) "processing" else "downloading",
-                    if (!processing && percent.isFinite() && percent >= 0) percent.toDouble().coerceIn(0.0, 100.0) else null,
-                    eta.takeIf { it > 0 })
+            var completed = false
+            var lastError: Exception? = null
+            for (attempt in 0 until MAX_NETWORK_ATTEMPTS) {
+                try {
+                    YoutubeDL.execute(request, task.processId, false) { percent, eta, line ->
+                        val processing = line.startsWith("[Merger]") || line.startsWith("[ExtractAudio]") ||
+                            line.startsWith("[VideoRemuxer]") || line.startsWith("[Fixup")
+                        emit(task, if (processing) "processing" else "downloading",
+                            if (!processing && percent.isFinite() && percent >= 0) percent.toDouble().coerceIn(0.0, 100.0) else null,
+                            eta.takeIf { it > 0 })
+                    }
+                    completed = true
+                    break
+                } catch (error: Exception) {
+                    lastError = error
+                    if (!isNetworkFailure(error) || attempt == MAX_NETWORK_ATTEMPTS - 1) break
+                    DownloadNotificationService.update(
+                        activity,
+                        task.id,
+                        "Réseau interrompu · nouvelle tentative ${attempt + 1}/$MAX_NETWORK_ATTEMPTS…",
+                        null,
+                    )
+                    journal.update(task.id, "retrying", "Coupure réseau : reprise automatique en cours.")
+                    Thread.sleep(RETRY_DELAY_MILLIS * (attempt + 1))
+                    task.checkActive()
+                }
             }
+            if (!completed) throw (lastError ?: MediaFailure("network", "Le téléchargement n’a pas pu reprendre."))
             task.checkActive()
             emit(task, "saving")
             val saved = DownloadStore(activity.applicationContext).save(
                 File(directory, "media.${format.extension}"), catalog.title, format, task)
             savedUris[saved.getValue("uri") as String] = format.mimeType
             return saved
+        } catch (error: Exception) {
+            failure = error
+            throw error
         } finally {
-            // Only this operation's UUID directory, never a user-chosen path.
-            directory.deleteRecursively()
+            // Keep fragments only after a network failure. They are scoped to this
+            // generated task id, never to a user-chosen path.
+            if (failure == null || task.cancelled.get() || !isNetworkFailure(failure!!)) {
+                directory.deleteRecursively()
+            }
         }
     }
 
     private fun emit(task: MediaTask, phase: String, percent: Double? = null, eta: Long? = null) {
+        journal.update(task.id, phase)
         DownloadNotificationService.update(activity, task.id, when (phase) {
             "processing" -> "Traitement du média…"
             "saving" -> "Enregistrement du fichier…"
@@ -378,6 +437,14 @@ class MediaBridge(
 
     fun close() {
         closed = true
+        // A foreground download belongs to Android, not to the Flutter view. It
+        // must survive activity/engine disposal when the user leaves the app.
+        if (activeOperation == "download" && active != null) {
+            methods.setMethodCallHandler(null)
+            events.setStreamHandler(null)
+            sink = null
+            return
+        }
         active?.cancel()
         permissionRequest?.second?.error("cancelled", "Opération interrompue.", null)
         permissionRequest = null
@@ -388,5 +455,15 @@ class MediaBridge(
         if (active == null) watchdog.shutdown()
     }
 
-    companion object { private const val STORAGE_PERMISSION = 4201 }
+    private fun isNetworkFailure(error: Exception): Boolean {
+        if (error is MediaFailure && error.code == "network") return true
+        val message = error.message.orEmpty().lowercase()
+        return listOf("timed out", "timeout", "unable to download", "network", "resolve", "http error", "connection reset").any { it in message }
+    }
+
+    companion object {
+        private const val STORAGE_PERMISSION = 4201
+        private const val MAX_NETWORK_ATTEMPTS = 3
+        private const val RETRY_DELAY_MILLIS = 5_000L
+    }
 }

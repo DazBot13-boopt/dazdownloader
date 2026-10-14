@@ -201,6 +201,36 @@ void main() {
       isFalse,
     );
   });
+
+  test(
+    'restores a completed native transfer after the application restarts',
+    () async {
+      engine.persistedTransfer = TransferSnapshot(
+        taskId: 'native-download',
+        state: 'completed',
+        url: testPreview.sourceUrl,
+        result: testDownload,
+      );
+      final restoredContainer = ProviderContainer(
+        overrides: [
+          mediaEngineProvider.overrideWithValue(engine),
+          downloadSessionStoreProvider.overrideWithValue(
+            _MemorySessionStore(null),
+          ),
+        ],
+      );
+      addTearDown(restoredContainer.dispose);
+
+      restoredContainer.read(downloadControllerProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final restored = restoredContainer.read(downloadControllerProvider);
+      expect(restored.status, DownloadStatus.completed);
+      expect(restored.url, testPreview.sourceUrl);
+      expect(restored.result, same(testDownload));
+      expect(restored.restored, isTrue);
+    },
+  );
 }
 
 class _MemorySessionStore extends DownloadSessionStore {

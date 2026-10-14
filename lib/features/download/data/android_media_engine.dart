@@ -178,6 +178,38 @@ class AndroidMediaEngine implements MediaEngine {
     return version;
   }
 
+  @override
+  Future<TransferSnapshot?> lastTransfer() async {
+    final data = await _invoke<Map>('transferStatus', const {});
+    if (data == null) return null;
+    final taskId = data['taskId'];
+    final state = data['state'];
+    if (taskId is! String || state is! String) return null;
+    final uriValue = data['uri'];
+    final name = data['name'];
+    final mime = data['mimeType'];
+    final size = data['sizeBytes'];
+    DownloadedMedia? result;
+    if (uriValue is String && name is String && mime is String && size is num) {
+      final uri = Uri.tryParse(uriValue);
+      if (uri != null && uri.scheme == 'content' && size > 0) {
+        result = DownloadedMedia(
+          uri: uri,
+          name: name,
+          mimeType: mime,
+          sizeBytes: size.toInt(),
+        );
+      }
+    }
+    return TransferSnapshot(
+      taskId: taskId,
+      state: state,
+      url: data['url'] is String ? Uri.tryParse(data['url'] as String) : null,
+      message: data['message'] as String?,
+      result: result,
+    );
+  }
+
   static DownloadedMedia _file(Map data) {
     final uri = Uri.parse(data['uri'] as String);
     final size = (data['sizeBytes'] as num).toInt();

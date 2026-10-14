@@ -66,6 +66,7 @@ class TestMediaEngine implements MediaEngine {
   MediaEngineException? resolutionError;
   MediaPreview preview = testPreview;
   DownloadedMedia? openedFile;
+  TransferSnapshot? persistedTransfer;
 
   @override
   Stream<MediaProgress> get progress => events.stream;
@@ -114,6 +115,9 @@ class TestMediaEngine implements MediaEngine {
     updateCalls++;
     return '2026.08.19';
   }
+
+  @override
+  Future<TransferSnapshot?> lastTransfer() async => persistedTransfer;
 
   void emit({
     double percent = 50,

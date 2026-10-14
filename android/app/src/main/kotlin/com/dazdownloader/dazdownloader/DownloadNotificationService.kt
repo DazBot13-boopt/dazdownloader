@@ -34,7 +34,9 @@ class DownloadNotificationService : Service() {
                 stopSelf()
             }
         }
-        return START_NOT_STICKY
+        // Redeliver the start intent if Android reclaims the process while a
+        // user-visible foreground transfer is still active.
+        return START_REDELIVER_INTENT
     }
 
     private fun notification(text: String, percent: Int?, ongoing: Boolean, autoCancel: Boolean = false): Notification {
