@@ -69,17 +69,21 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   int get _selectedIndex {
-    if (widget.location.startsWith('/history')) {
+    if (widget.location.startsWith('/download')) {
       return 1;
     }
-    if (widget.location.startsWith('/settings')) {
+    if (widget.location.startsWith('/history')) {
       return 2;
+    }
+    if (widget.location.startsWith('/settings')) {
+      return 3;
     }
     return 0;
   }
 
   @override
   Widget build(BuildContext context) {
+    final analysis = ref.watch(downloadControllerProvider);
     ref.listen(downloadControllerProvider, (previous, next) {
       if (!next.restored ||
           next.url == null ||
@@ -96,18 +100,29 @@ class _AppShellState extends ConsumerState<AppShell> {
         onDestinationSelected: (index) {
           switch (index) {
             case 1:
-              context.go('/history');
+              context.go('/download');
             case 2:
+              context.go('/history');
+            case 3:
               context.go('/settings');
             default:
               context.go('/');
           }
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: 'Accueil',
+          ),
+          NavigationDestination(
+            icon: analysis.isBusy
+                ? const Badge(smallSize: 8, child: Icon(Icons.manage_search))
+                : const Icon(Icons.manage_search),
+            selectedIcon: analysis.isBusy
+                ? const Badge(smallSize: 8, child: Icon(Icons.manage_search))
+                : const Icon(Icons.manage_search),
+            label: 'Analyse',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),
