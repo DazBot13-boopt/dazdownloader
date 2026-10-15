@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "596306360771",
+    "project_id": "loady-229",
+    "storage_bucket": "loady-229.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:596306360771:android:c34cf6e3e19b4fce1fe576",
+        "android_client_info": {
+          "package_name": "com.dazdownloader.dazdownloader"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTdRhwdLVx4_iL9uChFn0eybfEbn4JK-s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
