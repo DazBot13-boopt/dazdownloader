@@ -44,5 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Firebase configuration is local to each developer and must never be pushed.
+/google-services.json
+/android/app/google-services.json
+
 # Widget Preview related
 .widget_preview/
