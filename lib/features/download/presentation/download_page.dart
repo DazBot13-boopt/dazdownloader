@@ -46,7 +46,7 @@ class _DownloadPageState extends ConsumerState<DownloadPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Téléchargement'),
+        title: const Text('Analyse'),
         leading: IconButton(
           onPressed: () => context.go('/'),
           icon: const Icon(Icons.arrow_back),
