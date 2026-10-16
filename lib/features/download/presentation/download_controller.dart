@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/analytics/analytics_service.dart';
 import '../data/android_media_engine.dart';
 import '../data/download_session_store.dart';
 import '../domain/media_engine.dart';
@@ -72,11 +73,13 @@ class DownloadController extends Notifier<DownloadState> {
   bool _disposed = false;
   String? _engineVersion;
   late DownloadSessionStore _sessionStore;
+  late AnalyticsService _analytics;
 
   @override
   DownloadState build() {
     _engine = ref.read(mediaEngineProvider);
     _sessionStore = ref.read(downloadSessionStoreProvider);
+    _analytics = ref.read(analyticsServiceProvider);
     final subscription = _engine.progress.listen(
       _onProgress,
       onError: (_) {
@@ -194,7 +197,13 @@ class DownloadController extends Notifier<DownloadState> {
         engineVersion: _engineVersion,
         restored: state.restored,
       );
+      unawaited(
+        _analytics.logUrlAnalyzed(host: uri.host, restored: restored),
+      );
     } catch (error) {
+      if (!_isCancellation(error)) {
+        unawaited(_analytics.logAnalyzeFailed(reason: _errorReason(error)));
+      }
       _fail(task, error);
     } finally {
       if (_activeTask == task) _activeTask = null;
@@ -211,6 +220,12 @@ class DownloadController extends Notifier<DownloadState> {
       url: preview.sourceUrl,
       preview: preview,
     );
+    unawaited(
+      _analytics.logDownloadStarted(
+        host: preview.sourceUrl.host,
+        format: format.id,
+      ),
+    );
     try {
       final result = await _engine.download(preview, format, taskId: task);
       if (_disposed || _activeTask != task) return;
@@ -220,7 +235,17 @@ class DownloadController extends Notifier<DownloadState> {
         preview: preview,
         result: result,
       );
+      unawaited(
+        _analytics.logDownloadSuccess(
+          host: preview.sourceUrl.host,
+          format: format.id,
+          bytes: result.sizeBytes,
+        ),
+      );
     } catch (error) {
+      if (!_isCancellation(error)) {
+        unawaited(_analytics.logDownloadFailed(reason: _errorReason(error)));
+      }
       _fail(task, error);
     } finally {
       if (_activeTask == task) _activeTask = null;
@@ -270,8 +295,12 @@ class DownloadController extends Notifier<DownloadState> {
         engineVersion: _engineVersion,
         restored: state.restored,
       );
+      unawaited(_analytics.logEngineUpdate(success: true));
       if (url != null) await resolve(url.toString(), force: true);
     } catch (error) {
+      if (!_isCancellation(error)) {
+        unawaited(_analytics.logEngineUpdate(success: false));
+      }
       _fail(task, error);
     } finally {
       if (_activeTask == task) _activeTask = null;
@@ -296,6 +325,12 @@ class DownloadController extends Notifier<DownloadState> {
     final result = file ?? state.result;
     if (result != null) await _engine.open(result);
   }
+
+  bool _isCancellation(Object error) =>
+      error is MediaEngineException && error.code == 'cancelled';
+
+  String? _errorReason(Object error) =>
+      error is MediaEngineException ? error.code : null;
 
   void _fail(String task, Object error) {
     if (_disposed || _activeTask != task) return;

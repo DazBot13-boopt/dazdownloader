@@ -1,8 +1,37 @@
+import 'dart:io' show Platform;
+
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'core/analytics/analytics_service.dart';
 
-void main() {
-  runApp(const ProviderScope(child: DazDownloaderApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final analytics = await _initAnalytics();
+  await analytics.logAppOpen();
+  runApp(
+    ProviderScope(
+      overrides: [analyticsServiceProvider.overrideWithValue(analytics)],
+      child: const DazDownloaderApp(),
+    ),
+  );
+}
+
+Future<AnalyticsService> _initAnalytics() async {
+  // Firebase is only wired for Android; the web preview and iOS stubs ship
+  // without a config and we don't want Firebase.initializeApp to throw there.
+  if (kIsWeb || !Platform.isAndroid) {
+    return const NoopAnalyticsService();
+  }
+  try {
+    await Firebase.initializeApp();
+    return FirebaseAnalyticsService(FirebaseAnalytics.instance);
+  } catch (error, stack) {
+    debugPrint('Firebase init failed, analytics disabled: $error\n$stack');
+    return const NoopAnalyticsService();
+  }
 }
