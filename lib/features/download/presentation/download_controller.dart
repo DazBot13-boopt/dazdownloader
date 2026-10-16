@@ -119,6 +119,9 @@ class DownloadController extends Notifier<DownloadState> {
           result: transfer.result,
           restored: true,
         );
+        // The native journal already surfaced this completion, so the saved
+        // pending link must not trigger a fresh analysis on the next launch.
+        unawaited(_sessionStore.clearPendingUrl());
       } else if (transfer.state == 'failed') {
         state = DownloadState(
           status: DownloadStatus.failed,
@@ -235,6 +238,8 @@ class DownloadController extends Notifier<DownloadState> {
         preview: preview,
         result: result,
       );
+      // Downloaded already: a cold restart should not re-analyze this link.
+      unawaited(_sessionStore.clearPendingUrl());
       unawaited(
         _analytics.logDownloadSuccess(
           host: preview.sourceUrl.host,

@@ -231,6 +231,66 @@ void main() {
       expect(restored.restored, isTrue);
     },
   );
+
+  test(
+    'a finished download does not relaunch an analysis on the next launch',
+    () async {
+      // Simulate the full happy path: analyze → download → complete.
+      await controller.resolve(testPreview.sourceUrl.toString());
+      final operation = controller.download(testFormat);
+      engine.downloadCompleter!.complete(testDownload);
+      await operation;
+      expect(state().status, DownloadStatus.completed);
+
+      // The in-memory store should also forget the link, so the Android
+      // engine's own transfer journal is the only source for restoration.
+      final followUpStore = _MemorySessionStore(null);
+      final followUpEngine = TestMediaEngine();
+      final followUpContainer = ProviderContainer(
+        overrides: [
+          mediaEngineProvider.overrideWithValue(followUpEngine),
+          downloadSessionStoreProvider.overrideWithValue(followUpStore),
+        ],
+      );
+      addTearDown(() async {
+        followUpContainer.dispose();
+        await followUpEngine.events.close();
+      });
+
+      followUpContainer.read(downloadControllerProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final after = followUpContainer.read(downloadControllerProvider);
+      expect(after.status, DownloadStatus.idle);
+      expect(followUpEngine.resolveCalls, 0);
+    },
+  );
+
+  test(
+    'restoring a completed native transfer also clears the pending link',
+    () async {
+      final store = _MemorySessionStore(testPreview.sourceUrl.toString());
+      engine.persistedTransfer = TransferSnapshot(
+        taskId: 'native-download',
+        state: 'completed',
+        url: testPreview.sourceUrl,
+        result: testDownload,
+      );
+      final restoredContainer = ProviderContainer(
+        overrides: [
+          mediaEngineProvider.overrideWithValue(engine),
+          downloadSessionStoreProvider.overrideWithValue(store),
+        ],
+      );
+      addTearDown(restoredContainer.dispose);
+
+      restoredContainer.read(downloadControllerProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(store.value, isNull);
+      expect(engine.resolveCalls, 0);
+    },
+  );
 }
 
 class _MemorySessionStore extends DownloadSessionStore {
@@ -244,5 +304,10 @@ class _MemorySessionStore extends DownloadSessionStore {
   @override
   Future<void> savePendingUrl(String url) async {
     value = url;
+  }
+
+  @override
+  Future<void> clearPendingUrl() async {
+    value = null;
   }
 }
