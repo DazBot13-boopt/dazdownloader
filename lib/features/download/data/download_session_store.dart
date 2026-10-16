@@ -18,4 +18,12 @@ class DownloadSessionStore {
       // Persistence is best effort; the active operation remains authoritative.
     }
   }
+
+  Future<void> clearPendingUrl() async {
+    try {
+      await SharedPreferencesAsync().remove(_pendingUrlKey);
+    } catch (_) {
+      // Same best-effort guarantee as savePendingUrl.
+    }
+  }
 }
