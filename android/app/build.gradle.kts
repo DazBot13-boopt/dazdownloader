@@ -70,6 +70,21 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // Pin the debug signing config to the user's `~/.android/debug.keystore`.
+        // AGP's default debug config path depends on `user.home` as the Gradle
+        // JVM sees it, which differs between dev machines and CI runners —
+        // without this override, AGP silently falls back to a freshly generated
+        // keystore and the resulting APK can't upgrade an install signed by
+        // the real one.
+        getByName("debug") {
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             // The engine's published AAR omits its required consumer rules.
