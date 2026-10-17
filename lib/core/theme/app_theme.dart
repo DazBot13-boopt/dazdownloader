@@ -97,11 +97,21 @@ class AppTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        // Soft diffuse shadow instead of a hard outline. In light mode the
+        // shadow carries the depth; in dark mode a faint tinted border keeps
+        // the card readable against the near-black background.
+        color: dark ? const Color(0xFF11151D) : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: dark
+            ? Colors.black.withAlpha(140)
+            : const Color(0xFF0F172A).withAlpha(24),
+        elevation: dark ? 0 : 3,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: scheme.outlineVariant.withAlpha(75)),
+          side: dark
+              ? BorderSide(color: scheme.outlineVariant.withAlpha(60))
+              : BorderSide.none,
         ),
       ),
       dividerTheme: DividerThemeData(
