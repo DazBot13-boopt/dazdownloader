@@ -63,6 +63,14 @@ class MediaUrlParser {
         host == 'fb.watch') {
       return MediaPlatform.facebook;
     }
+    if (_matches(host, 'pinterest.com') ||
+        _matches(host, 'pinterest.fr') ||
+        host == 'pin.it') {
+      return MediaPlatform.pinterest;
+    }
+    if (_matches(host, 'threads.net') || _matches(host, 'threads.com')) {
+      return MediaPlatform.threads;
+    }
     return null;
   }
 

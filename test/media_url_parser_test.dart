@@ -35,6 +35,26 @@ void main() {
       MediaUrlParser.platformFor(Uri.parse('https://x.com/user/status/123')),
       MediaPlatform.x,
     );
+    expect(
+      MediaUrlParser.platformFor(
+        Uri.parse('https://www.pinterest.com/pin/123/'),
+      ),
+      MediaPlatform.pinterest,
+    );
+    expect(
+      MediaUrlParser.platformFor(Uri.parse('https://pin.it/abc')),
+      MediaPlatform.pinterest,
+    );
+    expect(
+      MediaUrlParser.platformFor(
+        Uri.parse('https://www.threads.net/@user/post/abc'),
+      ),
+      MediaPlatform.threads,
+    );
+    expect(
+      MediaUrlParser.platformFor(Uri.parse('https://threads.com/@user/post/x')),
+      MediaPlatform.threads,
+    );
   });
 
   test('rejects unsupported and malformed URLs', () {

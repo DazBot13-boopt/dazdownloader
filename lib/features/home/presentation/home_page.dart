@@ -37,7 +37,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Collez un lien YouTube, TikTok, Instagram, Snapchat, X ou Facebook.',
+            'Collez un lien YouTube, TikTok, Instagram, Snapchat, X, Facebook, Pinterest ou Threads.',
           ),
         ),
       );
@@ -124,7 +124,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       const SizedBox(height: 34),
                       _SectionTitle(
                         title: 'Plateformes prises en charge',
-                        subtitle: 'Six univers, une même expérience.',
+                        subtitle: 'Huit univers, une même expérience.',
                       ),
                       const SizedBox(height: 14),
                       GridView.builder(
@@ -298,6 +298,8 @@ class _PlatformCard extends StatelessWidget {
     MediaPlatform.snapchat => FontAwesomeIcons.snapchat,
     MediaPlatform.x => FontAwesomeIcons.xTwitter,
     MediaPlatform.facebook => FontAwesomeIcons.facebookF,
+    MediaPlatform.pinterest => FontAwesomeIcons.pinterest,
+    MediaPlatform.threads => FontAwesomeIcons.threads,
   };
 
   Color get _color => switch (platform) {
@@ -307,6 +309,8 @@ class _PlatformCard extends StatelessWidget {
     MediaPlatform.snapchat => const Color(0xFFFFCC00),
     MediaPlatform.x => const Color(0xFF71717A),
     MediaPlatform.facebook => const Color(0xFF1877F2),
+    MediaPlatform.pinterest => const Color(0xFFE60023),
+    MediaPlatform.threads => const Color(0xFF101010),
   };
 
   @override
