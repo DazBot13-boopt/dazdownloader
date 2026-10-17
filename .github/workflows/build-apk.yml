@@ -59,6 +59,23 @@ jobs:
             exit 1
           fi
 
+      - name: Restore Firebase Android config
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON_BASE64 secret is missing — the Firebase Gradle plugin needs android/app/google-services.json at build time."
+            exit 1
+          fi
+          if printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d -i > android/app/google-services.json 2>/dev/null \
+             && [ -s android/app/google-services.json ] \
+             && jq -e '.project_info.project_id' android/app/google-services.json >/dev/null 2>&1; then
+            echo "Firebase config restored ($(stat -c%s android/app/google-services.json) bytes)."
+          else
+            echo "::error::Failed to decode or validate GOOGLE_SERVICES_JSON_BASE64."
+            exit 1
+          fi
+
       - name: Install dependencies
         run: flutter pub get
 
