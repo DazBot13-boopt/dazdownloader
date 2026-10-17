@@ -39,23 +39,31 @@ jobs:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
-            echo "::warning::DEBUG_KEYSTORE_BASE64 secret is missing — build will use the runner's auto-generated debug keystore (signature will not match previously-installed APKs)."
-            exit 0
+            echo "::error::DEBUG_KEYSTORE_BASE64 secret is missing — APK would be signed with a random cert that cannot upgrade installed versions."
+            exit 1
           fi
+          # Nuke any keystore the Android SDK may have auto-generated before
+          # this step runs, both at the shell's $HOME and at the one Gradle's
+          # JVM resolves — our restored file must be the only one found.
+          rm -f "$HOME/.android/debug.keystore" "/root/.android/debug.keystore" 2>/dev/null || true
           mkdir -p "$HOME/.android"
-          # -i / --ignore-garbage tolerates line breaks, stray whitespace or
-          # extra characters that may have slipped in during copy-paste.
-          # printf '%s' avoids the trailing newline that `echo` would add.
+          # -i tolerates line breaks / whitespace in the pasted secret.
+          # printf '%s' avoids the extra trailing newline echo would add.
           if printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 -d -i > "$HOME/.android/debug.keystore" 2>/dev/null \
              && [ -s "$HOME/.android/debug.keystore" ]; then
             SIZE=$(stat -c%s "$HOME/.android/debug.keystore")
-            echo "Debug keystore restored (${SIZE} bytes)."
+            echo "Debug keystore restored at $HOME/.android/debug.keystore (${SIZE} bytes)."
             if [ "$SIZE" -lt 1000 ]; then
-              echo "::error::Decoded keystore is suspiciously small (${SIZE} bytes). Re-encode with: base64 -w 0 ~/.android/debug.keystore"
+              echo "::error::Decoded keystore is suspiciously small (${SIZE} bytes)."
               exit 1
             fi
+            # Print the SHA-256 fingerprint of the restored keystore for
+            # cross-check with the APK's signature after the build.
+            keytool -list -keystore "$HOME/.android/debug.keystore" \
+                    -storepass android -alias androiddebugkey 2>&1 \
+              | grep -E "SHA256|SHA-256" || true
           else
-            echo "::error::Failed to decode DEBUG_KEYSTORE_BASE64. Re-generate with: base64 -w 0 ~/.android/debug.keystore"
+            echo "::error::Failed to decode DEBUG_KEYSTORE_BASE64. Re-upload with: base64 -w 0 ~/.android/debug.keystore | gh secret set DEBUG_KEYSTORE_BASE64 -R <repo>"
             exit 1
           fi
 
@@ -91,6 +99,12 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "apk_path=dist/loady-${VERSION}-arm64.apk" >> "$GITHUB_OUTPUT"
           ls -lh dist/
+
+      - name: Verify APK signature matches the restored keystore
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs "${{ steps.rename.outputs.apk_path }}" \
+            | grep -E "certificate SHA-256|certificate DN" || true
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
