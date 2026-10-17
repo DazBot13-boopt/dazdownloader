@@ -336,18 +336,10 @@ class _PlatformCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 7, 14, 7),
+            padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
             child: Row(
               children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: _color.withAlpha(26),
-                    shape: BoxShape.circle,
-                  ),
-                  child: FaIcon(_icon, color: _color, size: 14),
-                ),
+                FaIcon(_icon, color: _color, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
