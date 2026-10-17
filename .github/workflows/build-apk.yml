@@ -40,10 +40,23 @@ jobs:
         run: |
           if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
             echo "::warning::DEBUG_KEYSTORE_BASE64 secret is missing — build will use the runner's auto-generated debug keystore (signature will not match previously-installed APKs)."
+            exit 0
+          fi
+          mkdir -p "$HOME/.android"
+          # -i / --ignore-garbage tolerates line breaks, stray whitespace or
+          # extra characters that may have slipped in during copy-paste.
+          # printf '%s' avoids the trailing newline that `echo` would add.
+          if printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 -d -i > "$HOME/.android/debug.keystore" 2>/dev/null \
+             && [ -s "$HOME/.android/debug.keystore" ]; then
+            SIZE=$(stat -c%s "$HOME/.android/debug.keystore")
+            echo "Debug keystore restored (${SIZE} bytes)."
+            if [ "$SIZE" -lt 1000 ]; then
+              echo "::error::Decoded keystore is suspiciously small (${SIZE} bytes). Re-encode with: base64 -w 0 ~/.android/debug.keystore"
+              exit 1
+            fi
           else
-            mkdir -p "$HOME/.android"
-            echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$HOME/.android/debug.keystore"
-            echo "Debug keystore restored."
+            echo "::error::Failed to decode DEBUG_KEYSTORE_BASE64. Re-generate with: base64 -w 0 ~/.android/debug.keystore"
+            exit 1
           fi
 
       - name: Install dependencies
