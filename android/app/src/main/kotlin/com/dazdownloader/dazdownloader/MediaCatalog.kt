@@ -116,8 +116,9 @@ data class MediaCatalog(
 
 object MediaUrls {
     private val domains = setOf("youtube.com", "tiktok.com", "instagram.com",
-        "snapchat.com", "x.com", "twitter.com", "facebook.com", "fb.com")
-    private val shortDomains = setOf("youtu.be", "fb.watch", "www.tiktokv.com")
+        "snapchat.com", "x.com", "twitter.com", "facebook.com", "fb.com",
+        "pinterest.com", "pinterest.fr", "threads.net", "threads.com")
+    private val shortDomains = setOf("youtu.be", "fb.watch", "www.tiktokv.com", "pin.it")
 
     fun validate(value: String): String {
         val uri = runCatching { URI(value) }.getOrNull()

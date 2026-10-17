@@ -1,4 +1,4 @@
-enum MediaPlatform { youtube, tiktok, instagram, snapchat, x, facebook }
+enum MediaPlatform { youtube, tiktok, instagram, snapchat, x, facebook, pinterest, threads }
 
 extension MediaPlatformDetails on MediaPlatform {
   String get label => switch (this) {
@@ -8,6 +8,8 @@ extension MediaPlatformDetails on MediaPlatform {
     MediaPlatform.snapchat => 'Snapchat',
     MediaPlatform.x => 'X',
     MediaPlatform.facebook => 'Facebook',
+    MediaPlatform.pinterest => 'Pinterest',
+    MediaPlatform.threads => 'Threads',
   };
 }
 
