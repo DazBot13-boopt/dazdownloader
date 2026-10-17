@@ -319,19 +319,11 @@ class _PlatformCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF11151D) : Colors.white,
         borderRadius: BorderRadius.circular(100),
-        border: isDark
-            ? Border.all(color: scheme.outlineVariant.withAlpha(55))
-            : null,
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: const Color(0xFF0F172A).withAlpha(12),
-                  blurRadius: 16,
-                  spreadRadius: -6,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+        border: Border.all(
+          color: isDark
+              ? scheme.outlineVariant.withAlpha(55)
+              : scheme.outlineVariant.withAlpha(60),
+        ),
       ),
       child: Material(
         color: Colors.transparent,
