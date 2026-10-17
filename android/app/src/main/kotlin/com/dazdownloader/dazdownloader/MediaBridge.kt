@@ -26,6 +26,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+// Resolve the real versionName from PackageManager so the diagnostic
+// surface stays in sync with every release instead of a hardcoded value.
+private val Activity.installedVersionName: String
+    get() = try {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: "inconnue"
+    } catch (_: PackageManager.NameNotFoundException) {
+        "inconnue"
+    }
+
 class MediaBridge(
     private val activity: Activity,
     messenger: BinaryMessenger,
@@ -152,7 +161,7 @@ class MediaBridge(
                         else result.error(error.code, error.message, mapOf(
                             "engineVersion" to (runtime.version ?: "non démarré"),
                             "androidApi" to Build.VERSION.SDK_INT,
-                            "appVersion" to "1.3.0",
+                            "appVersion" to activity.installedVersionName,
                             "operation" to call.method))
                     }
                 }
