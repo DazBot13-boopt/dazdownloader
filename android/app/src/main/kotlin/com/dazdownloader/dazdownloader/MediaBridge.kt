@@ -250,6 +250,13 @@ class MediaBridge(
             val direct = TiktokPhotos.postId(source) != null
             try {
                 var page = client.page(TiktokPhotos.pageUrl(source))
+                // Short links like vm.tiktok.com/<slug> and tiktok.com/t/<slug>
+                // sometimes stop at a landing page that only resolves via JS.
+                // Pick the canonical URL out of its own HTML and re-fetch.
+                if (TiktokPhotos.postId(page.url) == null) {
+                    val canonical = TiktokPhotos.canonical(page.html)
+                    if (canonical != null) page = client.page(TiktokPhotos.pageUrl(canonical))
+                }
                 if (TiktokPhotos.postId(page.url) != null && page.url != TiktokPhotos.pageUrl(page.url)) {
                     page = client.page(TiktokPhotos.pageUrl(page.url))
                 }
