@@ -4,9 +4,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/widgets/brand_mark.dart';
 import '../../download/domain/media_models.dart';
 import '../../download/domain/media_url_parser.dart';
+import '../../../core/widgets/brand_mark.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -50,7 +50,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _pasteUrl() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final text = data?.text?.trim();
-    if (!mounted || text == null || text.isEmpty) return;
+    if (!mounted || text == null || text.isEmpty) {
+      return;
+    }
     _urlController.text = text;
     _urlController.selection = TextSelection.fromPosition(
       TextPosition(offset: text.length),
@@ -60,152 +62,155 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final width = MediaQuery.sizeOf(context).width;
-    final horizontalPadding = width >= 900
-        ? 40.0
-        : width >= 600
-        ? 28.0
-        : 18.0;
-    final columns = width >= 900 ? 3 : 2;
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            18,
-            horizontalPadding,
-            30,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 960),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _BrandHeader(theme: theme),
-                  const SizedBox(height: 26),
-                  _DownloadHero(
-                    controller: _urlController,
-                    onPaste: _pasteUrl,
-                    onSubmit: _submit,
-                  ),
-                  const SizedBox(height: 30),
-                  _SectionHeading(
-                    eyebrow: 'TOUT AU MÊME ENDROIT',
-                    title: 'Vos plateformes préférées',
-                    subtitle: 'Un lien suffit. Loady s’occupe du reste.',
-                    trailing: '06',
-                  ),
-                  const SizedBox(height: 15),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: MediaPlatform.values.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: columns,
-                      crossAxisSpacing: 11,
-                      mainAxisSpacing: 11,
-                      mainAxisExtent: 66,
-                    ),
-                    itemBuilder: (context, index) {
-                      final platform = MediaPlatform.values[index];
-                      return _PlatformCard(
-                        platform: platform,
-                        onTap: () {
-                          _urlController.clear();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Collez un lien ${platform.label} dans le champ ci-dessus.',
-                              ),
-                            ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontalPadding = constraints.maxWidth >= 720 ? 40.0 : 20.0;
+            final columns = 3;
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                24,
+                horizontalPadding,
+                32,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _HeroHeader(theme: theme),
+                      const SizedBox(height: 28),
+                      Text(
+                        'Nouveau téléchargement',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Détectez la plateforme, choisissez une qualité et téléchargez localement.',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _urlController,
+                        keyboardType: TextInputType.url,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _submit(),
+                        decoration: InputDecoration(
+                          hintText: 'https://www.youtube.com/watch?v=…',
+                          labelText: 'URL de la vidéo ou des photos TikTok',
+                          prefixIcon: const Icon(Icons.link),
+                          suffixIcon: IconButton(
+                            onPressed: _pasteUrl,
+                            tooltip: 'Coller le lien',
+                            icon: const Icon(Icons.content_paste),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      FilledButton.icon(
+                        onPressed: _submit,
+                        icon: const Icon(Icons.arrow_forward),
+                        label: const Text('Analyser le lien'),
+                      ),
+                      const SizedBox(height: 34),
+                      _SectionTitle(
+                        title: 'Plateformes prises en charge',
+                        subtitle: 'Six univers, une même expérience.',
+                      ),
+                      const SizedBox(height: 14),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: MediaPlatform.values.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 2.35,
+                        ),
+                        itemBuilder: (context, index) {
+                          final platform = MediaPlatform.values[index];
+                          return _PlatformCard(
+                            platform: platform,
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Collez un lien ${platform.label} dans le champ ci-dessus.',
+                                  ),
+                                ),
+                              );
+                              _urlController.clear();
+                            },
                           );
                         },
-                      );
-                    },
+                      ),
+                      const SizedBox(height: 34),
+                      _SectionTitle(
+                        title: 'Derniers téléchargements',
+                        subtitle: 'Votre historique local apparaîtra ici.',
+                      ),
+                      const SizedBox(height: 14),
+                      const _EmptyHistoryCard(),
+                    ],
                   ),
-                  const SizedBox(height: 30),
-                  _SectionHeading(
-                    eyebrow: 'VOTRE ESPACE',
-                    title: 'Récemment téléchargés',
-                    subtitle: 'Vos fichiers restent sur cet appareil.',
-                    trailing: null,
-                  ),
-                  const SizedBox(height: 15),
-                  const _EmptyHistoryCard(),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _BrandHeader extends StatelessWidget {
-  const _BrandHeader({required this.theme});
+class _HeroHeader extends StatelessWidget {
+  const _HeroHeader({required this.theme});
 
   final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
-    final muted = theme.colorScheme.onSurfaceVariant;
+    final scheme = theme.colorScheme;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const BrandMark(size: 42),
-        const SizedBox(width: 11),
+        const BrandMark(size: 52),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'LOADY',
-                style: theme.textTheme.titleMedium?.copyWith(
+                'Loady',
+                style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 1.15,
+                  letterSpacing: .2,
                 ),
               ),
+              const SizedBox(height: 3),
               Text(
-                'VOTRE MÉDIA, VOTRE ESPACE',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: muted,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: .8,
+                'Ton contenu. Ton appareil. Tes règles.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(99),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withAlpha(110),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.shield_outlined,
-                size: 15,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'PRIVÉ',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .8,
-                ),
+              const SizedBox(height: 8),
+              const Row(
+                children: [
+                  _HeroPill(icon: Icons.lock_outline, label: 'LOCAL'),
+                  SizedBox(width: 6),
+                  _HeroPill(icon: Icons.bolt_outlined, label: 'RAPIDE'),
+                ],
               ),
             ],
           ),
@@ -215,232 +220,66 @@ class _BrandHeader extends StatelessWidget {
   }
 }
 
-class _DownloadHero extends StatelessWidget {
-  const _DownloadHero({
-    required this.controller,
-    required this.onPaste,
-    required this.onSubmit,
-  });
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({required this.icon, required this.label});
 
-  final TextEditingController controller;
-  final VoidCallback onPaste;
-  final VoidCallback onSubmit;
+  final IconData icon;
+  final String label;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF6F8FF) : const Color(0xFF111827);
-    final subInk = isDark ? const Color(0xFFC5D2ED) : const Color(0xFF56657D);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? const [Color(0xFF1A2744), Color(0xFF101827), Color(0xFF111722)]
-              : const [Color(0xFFEAF1FF), Color(0xFFF4F7FF), Color(0xFFFFFFFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.primary.withAlpha(18),
+      borderRadius: BorderRadius.circular(99),
+      border: Border.all(
+        color: Theme.of(context).colorScheme.primary.withAlpha(45),
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: .7,
+          ),
         ),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: scheme.primary.withAlpha(isDark ? 65 : 36)),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.primary.withAlpha(isDark ? 18 : 16),
-            blurRadius: 30,
-            offset: const Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: scheme.primary.withAlpha(isDark ? 38 : 22),
-              borderRadius: BorderRadius.circular(99),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.auto_awesome, size: 13, color: scheme.primary),
-                const SizedBox(width: 6),
-                Text(
-                  'SIMPLE · RAPIDE · LOCAL',
-                  style: TextStyle(
-                    color: scheme.primary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .85,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Gardez ce que\nvous aimez.',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: ink,
-              height: 1.02,
-              fontSize: 34,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1.3,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Collez un lien public et enregistrez votre média directement sur cet appareil.',
-            style: Theme.of(context).textTheme.bodyMedium
-                ?.copyWith(color: subInk, height: 1.45),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0D1421) : Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: scheme.outlineVariant.withAlpha(125)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(isDark ? 20 : 8),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 15),
-                Icon(Icons.link_rounded, color: scheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    keyboardType: TextInputType.url,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => onSubmit(),
-                    decoration: InputDecoration(
-                      hintText: 'Collez un lien…',
-                      hintStyle: TextStyle(color: subInk.withAlpha(180)),
-                      filled: false,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 17),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: onPaste,
-                  tooltip: 'Coller le lien',
-                  icon: Icon(Icons.content_paste_rounded, color: subInk),
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
-          ),
-          const SizedBox(height: 11),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: onSubmit,
-              icon: const Icon(Icons.arrow_forward_rounded, size: 19),
-              label: const Text('Analyser le lien'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(54),
-                backgroundColor: scheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 13),
-          Row(
-            children: [
-              Icon(Icons.lock_outline_rounded, size: 14, color: subInk),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Aucun compte. Aucun cloud. Vos fichiers restent chez vous.',
-                  style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(color: subInk, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }
 
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading({
-    required this.eyebrow,
-    required this.title,
-    required this.subtitle,
-    required this.trailing,
-  });
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, required this.subtitle});
 
-  final String eyebrow;
   final String title;
   final String subtitle;
-  final String? trailing;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                eyebrow,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.1,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                title,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -.45,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+        Text(
+          title,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
           ),
         ),
-        if (trailing != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: Text(
-              trailing!,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withAlpha(160),
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-              ),
-            ),
+        const SizedBox(height: 3),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
+        ),
       ],
     );
   }
@@ -463,9 +302,9 @@ class _PlatformCard extends StatelessWidget {
 
   Color get _color => switch (platform) {
     MediaPlatform.youtube => const Color(0xFFFF375F),
-    MediaPlatform.tiktok => const Color(0xFF00B8A9),
+    MediaPlatform.tiktok => const Color(0xFF00C7BE),
     MediaPlatform.instagram => const Color(0xFFE1306C),
-    MediaPlatform.snapchat => const Color(0xFFF0B900),
+    MediaPlatform.snapchat => const Color(0xFFFFCC00),
     MediaPlatform.x => const Color(0xFF71717A),
     MediaPlatform.facebook => const Color(0xFF1877F2),
   };
@@ -478,35 +317,31 @@ class _PlatformCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
           child: Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
-                  color: _color.withAlpha(20),
-                  borderRadius: BorderRadius.circular(13),
+                  color: _color.withAlpha(16),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                alignment: Alignment.center,
-                child: FaIcon(_icon, color: _color, size: 17),
+                child: FaIcon(_icon, color: _color, size: 16),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   platform.label,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(
-                Icons.arrow_outward_rounded,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant.withAlpha(175),
-              ),
+              Icon(Icons.arrow_forward_rounded, size: 14, color: _color),
             ],
           ),
         ),
@@ -523,49 +358,32 @@ class _EmptyHistoryCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
+        color: theme.colorScheme.surfaceContainerHighest.withAlpha(90),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withAlpha(100),
         ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withAlpha(18),
-              borderRadius: BorderRadius.circular(15),
+          Icon(Icons.history, size: 34, color: theme.colorScheme.primary),
+          const SizedBox(height: 10),
+          Text(
+            'Aucun téléchargement pour le moment',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
-            alignment: Alignment.center,
-            child: Icon(
-              Icons.history_rounded,
-              color: theme.colorScheme.primary,
-            ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Votre bibliothèque commence ici',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Vos derniers fichiers apparaîtront dans cet espace.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 4),
+          Text(
+            'Vos fichiers resteront sur cet appareil.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
