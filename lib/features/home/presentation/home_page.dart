@@ -312,36 +312,39 @@ class _PlatformCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Pill shape with the shadow from CardTheme — matches the reference
+    // screenshot (soft stadium shape, no hard outline).
     return Card(
       clipBehavior: Clip.antiAlias,
+      shape: const StadiumBorder(),
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+          padding: const EdgeInsets.fromLTRB(6, 7, 12, 7),
           child: Row(
             children: [
               Container(
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
-                  color: _color.withAlpha(16),
-                  borderRadius: BorderRadius.circular(9),
+                  color: _color.withAlpha(22),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: FaIcon(_icon, color: _color, size: 16),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   platform.label,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    fontSize: 11,
+                    fontSize: 12,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(Icons.arrow_forward_rounded, size: 14, color: _color),
+              Icon(Icons.arrow_forward_rounded, size: 15, color: _color),
             ],
           ),
         ),
