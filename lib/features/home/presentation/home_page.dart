@@ -86,7 +86,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       _HeroHeader(theme: theme),
                       const SizedBox(height: 28),
                       Text(
-                        'Nouveau téléchargement',
+                        'Garder ce que vous aimez',
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
