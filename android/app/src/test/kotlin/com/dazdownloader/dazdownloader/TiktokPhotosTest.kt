@@ -63,6 +63,33 @@ class TiktokPhotosTest {
         assertNull(TiktokPhotos.postId("https://www.tiktok.com/@author"))
     }
 
+    @Test fun canonicalRecoversTheFullPostUrlFromShortLinkLandingPages() {
+        // og:url with a full canonical URL — recovered as-is.
+        val ogHtml = """<meta property="og:url" content="https://www.tiktok.com/@someone/photo/7123456789"/>"""
+        assertEquals("https://www.tiktok.com/@someone/photo/7123456789", TiktokPhotos.canonical(ogHtml))
+
+        // link rel=canonical with a relative URL — resolved against www.tiktok.com.
+        val linkHtml = """<link rel="canonical" href="/@someone/video/7123456789"/>"""
+        assertEquals("https://www.tiktok.com/@someone/video/7123456789", TiktokPhotos.canonical(linkHtml))
+
+        // Attributes written in the reverse order (href before rel).
+        val reversed = """<link href="https://www.tiktok.com/@u/photo/42" rel="canonical"/>"""
+        assertEquals("https://www.tiktok.com/@u/photo/42", TiktokPhotos.canonical(reversed))
+    }
+
+    @Test fun canonicalIgnoresUnrelatedOrUnsafeTargets() {
+        // Points at a non-post URL — rejected because postId does not match.
+        val homepage = """<link rel="canonical" href="https://www.tiktok.com/foryou"/>"""
+        assertNull(TiktokPhotos.canonical(homepage))
+
+        // Points to a lookalike domain — rejected by allowedPageUrl.
+        val evil = """<meta property="og:url" content="https://evil.example.com/@u/photo/1"/>"""
+        assertNull(TiktokPhotos.canonical(evil))
+
+        // No canonical tag at all.
+        assertNull(TiktokPhotos.canonical("<html><body>Hello</body></html>"))
+    }
+
     @Test fun cdnValidationRejectsCredentialsLocalHostsAndDomainLookalikes() {
         for (url in listOf("http://p16.tiktokcdn.com/a", "https://tiktokcdn.com.evil.test/a",
             "https://eviltiktokcdn.com/a", "https://user:pw@p16.tiktokcdn.com/a",

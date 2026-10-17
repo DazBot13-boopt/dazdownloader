@@ -16,6 +16,12 @@ object TiktokPhotos {
     private val post = Regex("^/@[^/]+/(?:photo|video)/(\\d+)/?$")
     private val script = Regex("<script\\b[^>]*\\bid=[\"']__UNIVERSAL_DATA_FOR_REHYDRATION__[\"'][^>]*>(.*?)</script>",
         setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+    private val canonicalMeta = Regex(
+        "<(?:link|meta)\\b[^>]*?(?:rel=[\"']canonical[\"']|property=[\"']og:url[\"'])[^>]*?(?:href|content)=[\"']([^\"']+)[\"']",
+        setOf(RegexOption.IGNORE_CASE))
+    private val canonicalMetaReversed = Regex(
+        "<(?:link|meta)\\b[^>]*?(?:href|content)=[\"']([^\"']+)[\"'][^>]*?(?:rel=[\"']canonical[\"']|property=[\"']og:url[\"'])",
+        setOf(RegexOption.IGNORE_CASE))
 
     fun isTiktok(url: String): Boolean = runCatching {
         val host = URI(url).host.orEmpty().lowercase()
@@ -28,6 +34,23 @@ object TiktokPhotos {
         val uri = URI(url)
         post.matchEntire(uri.path.orEmpty()) ?: return url
         return URI("https", "www.tiktok.com", uri.path.replace("/photo/", "/video/"), null, null).toString()
+    }
+
+    /**
+     * Try to recover the canonical `/@user/photo|video/<id>` URL from a short
+     * link page that only did a JS-side redirect (e.g. `tiktok.com/t/<slug>`).
+     * Returns null if nothing credible is found.
+     */
+    fun canonical(html: String): String? {
+        val candidates = (canonicalMeta.findAll(html) + canonicalMetaReversed.findAll(html))
+            .map { it.groupValues[1].trim() }
+            .filter { it.isNotEmpty() }
+        return candidates.firstNotNullOfOrNull { href ->
+            val absolute = runCatching { URI("https://www.tiktok.com/").resolve(href).toString() }.getOrNull()
+            absolute?.takeIf {
+                runCatching { postId(it) }.getOrNull() != null && PublicWebClient.allowedPageUrl(it)
+            }
+        }
     }
 
     fun parse(html: String, pageUrl: String): PhotoAlbum? {
