@@ -312,40 +312,60 @@ class _PlatformCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Pill shape with the shadow from CardTheme — matches the reference
-    // screenshot (soft stadium shape, no hard outline).
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: const StadiumBorder(),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 7, 12, 7),
-          child: Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: _color.withAlpha(22),
-                  borderRadius: BorderRadius.circular(10),
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF11151D) : Colors.white,
+        borderRadius: BorderRadius.circular(100),
+        border: isDark
+            ? Border.all(color: scheme.outlineVariant.withAlpha(55))
+            : null,
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withAlpha(12),
+                  blurRadius: 16,
+                  spreadRadius: -6,
+                  offset: const Offset(0, 6),
                 ),
-                child: FaIcon(_icon, color: _color, size: 16),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  platform.label,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
+              ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 7, 14, 7),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: _color.withAlpha(26),
+                    shape: BoxShape.circle,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  child: FaIcon(_icon, color: _color, size: 14),
                 ),
-              ),
-              Icon(Icons.arrow_forward_rounded, size: 15, color: _color),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    platform.label,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
