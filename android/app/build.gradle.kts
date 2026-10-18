@@ -1,8 +1,10 @@
 import java.io.File
+import java.io.FileInputStream
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -14,6 +16,15 @@ plugins {
 // Pin the official Python zipapp; don't ship the library's 2025 extractor.
 val pinnedYtdlpVersion = "2026.08.19"
 val pinnedYtdlpSha256 = "1fa6733c37ea6fb51c99ad8fe785e7b7e5f3246c9b980230329d4fb72ed8d4d6"
+// Google Play upload-key credentials. Populated by the release workflow from
+// GitHub secrets; absent in local dev where we fall back to the debug cert.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        FileInputStream(keystorePropertiesFile).use { load(it) }
+    }
+}
+
 val engineResources = layout.buildDirectory.dir("generated/pinnedEngine/res")
 val preparePinnedEngine by tasks.registering {
     val binary = engineResources.map { it.file("raw/daz_ytdlp") }
@@ -83,15 +94,32 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        create("release") {
+            // Only wired when the release workflow has materialised
+            // android/key.properties + the upload keystore. The buildType
+            // below falls back to the debug cert when they are absent so
+            // `flutter run --release` keeps working on dev machines.
+            if (keystorePropertiesFile.exists()) {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
     }
 
     buildTypes {
         release {
             // The engine's published AAR omits its required consumer rules.
             proguardFiles("proguard-rules.pro")
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                // No upload key present → keep the debug cert so dev
+                // `flutter run --release` and the current debug-signed APK
+                // workflow continue to produce installable builds.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
