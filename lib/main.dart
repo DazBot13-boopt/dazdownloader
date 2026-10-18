@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'core/ads/ads_controller.dart';
 import 'core/analytics/analytics_service.dart';
 import 'core/notifications/messaging_init.dart';
 
@@ -15,12 +16,16 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final analytics = await _initAnalytics();
   await analytics.logAppOpen();
-  // Fire-and-forget: messaging init is slow (permission prompt + network)
-  // and shouldn't gate the UI from appearing.
+  final container = ProviderContainer(
+    overrides: [analyticsServiceProvider.overrideWithValue(analytics)],
+  );
+  // Fire-and-forget: these inits involve permission prompts and network
+  // round-trips and shouldn't gate the first frame.
   unawaited(initMessaging());
+  unawaited(initAds(container));
   runApp(
-    ProviderScope(
-      overrides: [analyticsServiceProvider.overrideWithValue(analytics)],
+    UncontrolledProviderScope(
+      container: container,
       child: const DazDownloaderApp(),
     ),
   );
