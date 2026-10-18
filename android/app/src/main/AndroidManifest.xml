@@ -50,6 +50,10 @@
             android:name=".DownloadNotificationService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <!-- AdMob app id (public identifier, safe to commit). -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-4928947364999295~8589830594" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
