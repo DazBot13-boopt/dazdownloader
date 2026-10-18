@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:io' show Platform;
 
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -8,11 +9,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/analytics/analytics_service.dart';
+import 'core/notifications/messaging_init.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final analytics = await _initAnalytics();
   await analytics.logAppOpen();
+  // Fire-and-forget: messaging init is slow (permission prompt + network)
+  // and shouldn't gate the UI from appearing.
+  unawaited(initMessaging());
   runApp(
     ProviderScope(
       overrides: [analyticsServiceProvider.overrideWithValue(analytics)],
