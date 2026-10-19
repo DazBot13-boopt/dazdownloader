@@ -4,7 +4,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/ads/banner_ad_view.dart';
 import '../../../core/widgets/brand_mark.dart';
 import '../../download/domain/media_models.dart';
 import '../../download/domain/media_url_parser.dart';
@@ -162,8 +161,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                       const SizedBox(height: 14),
                       const _EmptyHistoryCard(),
-                      const SizedBox(height: 20),
-                      const Center(child: BannerAdView()),
                     ],
                   ),
                 ),
