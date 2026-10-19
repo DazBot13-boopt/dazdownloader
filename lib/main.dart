@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
-import 'core/ads/ads_controller.dart';
 import 'core/analytics/analytics_service.dart';
 import 'core/notifications/messaging_init.dart';
 
@@ -19,10 +18,9 @@ Future<void> main() async {
   final container = ProviderContainer(
     overrides: [analyticsServiceProvider.overrideWithValue(analytics)],
   );
-  // Fire-and-forget: these inits involve permission prompts and network
+  // Fire-and-forget: FCM init involves a permission prompt and network
   // round-trips and shouldn't gate the first frame.
   unawaited(initMessaging());
-  unawaited(initAds(container));
   runApp(
     UncontrolledProviderScope(
       container: container,
