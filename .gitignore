@@ -1,3 +1,6 @@
+# Local scratch — never committed (prompts for other AIs, drafts, notes)
+/scratch/
+
 # Miscellaneous
 *.class
 *.log
