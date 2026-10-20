@@ -10,13 +10,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
 import 'core/analytics/analytics_service.dart';
 import 'core/notifications/messaging_init.dart';
+import 'core/settings/theme_mode_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final analytics = await _initAnalytics();
+  final results = await Future.wait<Object>([
+    _initAnalytics(),
+    ThemeModeController.loadInitialMode(),
+  ]);
+  final analytics = results[0] as AnalyticsService;
+  final initialThemeMode = results[1] as ThemeMode;
   await analytics.logAppOpen();
   final container = ProviderContainer(
-    overrides: [analyticsServiceProvider.overrideWithValue(analytics)],
+    overrides: [
+      analyticsServiceProvider.overrideWithValue(analytics),
+      themeModeProvider.overrideWith(() => ThemeModeController(initialThemeMode)),
+    ],
   );
   // Fire-and-forget: FCM init involves a permission prompt and network
   // round-trips and shouldn't gate the first frame.

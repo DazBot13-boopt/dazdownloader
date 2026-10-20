@@ -141,7 +141,18 @@ class DownloadController extends Notifier<DownloadState> {
     if (_disposed || rawUrl == null || rawUrl.isEmpty || state.url != null) {
       return;
     }
-    await resolve(rawUrl, force: true, restored: true);
+    final uri = MediaUrlParser.parse(rawUrl);
+    if (uri == null) {
+      await _sessionStore.clearPendingUrl();
+      return;
+    }
+    state = DownloadState(
+      status: DownloadStatus.failed,
+      url: uri,
+      error: 'L’analyse a été interrompue. Relancez-la quand vous le souhaitez.',
+      restored: true,
+    );
+    await _sessionStore.clearPendingUrl();
   }
 
   String _newTask() =>
@@ -182,7 +193,8 @@ class DownloadController extends Notifier<DownloadState> {
       return;
     }
     if (!force && state.preview != null && state.url == uri) return;
-    unawaited(_sessionStore.savePendingUrl(uri.toString()));
+    await _sessionStore.savePendingUrl(uri.toString());
+    if (_disposed) return;
     final task = _activeTask = _newTask();
     state = DownloadState(
       status: DownloadStatus.resolving,
@@ -209,6 +221,7 @@ class DownloadController extends Notifier<DownloadState> {
       }
       _fail(task, error);
     } finally {
+      await _sessionStore.clearPendingUrl();
       if (_activeTask == task) _activeTask = null;
     }
   }

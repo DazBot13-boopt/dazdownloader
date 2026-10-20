@@ -2,10 +2,10 @@ package com.dazdownloader.dazdownloader
 
 import android.Manifest
 import android.app.Activity
-import android.content.ActivityNotFoundException
 import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.ActivityNotFoundException
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.StatFs
 import android.provider.MediaStore
+import androidx.documentfile.provider.DocumentFile
 import android.util.Log
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
@@ -48,6 +49,7 @@ class MediaBridge(
     private val journal = TransferJournal(activity.applicationContext)
     private val catalogs = linkedMapOf<String, MediaCatalog>() // Worker thread only.
     private val savedUris = ConcurrentHashMap<String, String>()
+    private var pendingLocationResult: MethodChannel.Result? = null
     private var sink: EventChannel.EventSink? = null
     @Volatile private var active: MediaTask? = null
     @Volatile private var activeOperation: String? = null
@@ -63,6 +65,7 @@ class MediaBridge(
     override fun onCancel(arguments: Any?) { sink = null }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        try {
         when (call.method) {
             "cancel" -> {
                 val id = call.argument<String>("taskId")
@@ -75,6 +78,22 @@ class MediaBridge(
             }
             "open" -> open(call, result)
             "history" -> result.success(history())
+            "deleteHistoryItem" -> result.success(deleteHistoryItem(call.argument<String>("uri") ?: ""))
+            "deleteAllHistory" -> result.success(deleteAllHistory())
+            "getDownloadLocation" -> result.success(downloadLocation())
+            "chooseDownloadLocation" -> {
+                if (activeOperation == "download") result.error("busy", "Attendez la fin du téléchargement pour changer de dossier.", null)
+                else chooseDownloadLocation(result)
+            }
+            "resetDownloadLocation" -> {
+                if (activeOperation == "download") {
+                    result.error("busy", "Attendez la fin du téléchargement pour changer de dossier.", null)
+                    return
+                }
+                activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
+                    .edit().remove(LOCATION_URI).apply()
+                result.success(downloadLocation())
+            }
             "transferStatus" -> result.success(journal.snapshot())
             "resolve", "download", "update" -> {
                 if (active != null || permissionRequest != null) {
@@ -82,12 +101,16 @@ class MediaBridge(
                     return
                 }
                 if (call.method == "download" && Build.VERSION.SDK_INT <= 28 &&
+                    activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE).getString(LOCATION_URI, null) == null &&
                     activity.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                     permissionRequest = call to result
                     activity.requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), STORAGE_PERMISSION)
                 } else launch(call, result)
             }
             else -> result.notImplemented()
+        }
+        } catch (error: Exception) {
+            result.error("native_error", error.message ?: "Opération impossible.", null)
         }
     }
 
@@ -182,6 +205,23 @@ class MediaBridge(
     }
 
     private fun history(): List<Map<String, Any?>> {
+        val selectedTree = activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
+            .getString(LOCATION_URI, null)
+        if (selectedTree != null) {
+            val tree = DocumentFile.fromTreeUri(activity, Uri.parse(selectedTree))
+                ?: return emptyList()
+            return tree.listFiles().filter { file ->
+                file.isFile && file.name?.matches(LOADY_FILE_NAME) == true
+            }.map { file ->
+                mapOf(
+                    "uri" to file.uri.toString(),
+                    "name" to (file.name ?: "Téléchargement"),
+                    "mimeType" to (file.type ?: mimeFor(file.name.orEmpty())),
+                    "sizeBytes" to file.length(),
+                    "dateAdded" to file.lastModified(),
+                )
+            }.sortedByDescending { it["dateAdded"] as Long }
+        }
         val resolver = activity.contentResolver
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Downloads.EXTERNAL_CONTENT_URI
@@ -225,6 +265,110 @@ class MediaBridge(
             }
         }
         return result
+    }
+
+    private fun deleteHistoryItem(rawUri: String): Boolean {
+        val uri = android.net.Uri.parse(rawUri)
+        val resolver = activity.contentResolver
+        val selectedTree = activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
+            .getString(LOCATION_URI, null)
+        if (selectedTree != null) {
+            val tree = DocumentFile.fromTreeUri(activity, Uri.parse(selectedTree))
+                ?: return false
+            val child = tree.listFiles().firstOrNull {
+                it.uri == uri && it.name?.matches(LOADY_FILE_NAME) == true
+            } ?: return false
+            return child.delete()
+        }
+        val isDownloads = uri.authority == "media" &&
+            (uri.path?.startsWith("/external/downloads/") == true ||
+             uri.path?.startsWith("/external/file/") == true)
+        if (!isDownloads) throw MediaFailure("storage", "Ce fichier ne peut pas être supprimé depuis Loady.")
+
+        val projection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(MediaStore.MediaColumns.RELATIVE_PATH)
+        } else arrayOf(MediaStore.MediaColumns.DATA)
+        val isOwned = resolver.query(uri, projection, null, null, null)?.use { cursor ->
+            if (!cursor.moveToFirst()) false
+            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                cursor.getString(0)?.trimEnd('/') == "${Environment.DIRECTORY_DOWNLOADS}/DAZDOWNLOADER"
+            } else {
+                val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "DAZDOWNLOADER")
+                val path = cursor.getString(0)?.let(::File)?.canonicalFile
+                path != null && path.parentFile?.canonicalFile == root.canonicalFile
+            }
+        } ?: false
+        if (!isOwned) return false
+        return resolver.delete(uri, null, null) == 1
+    }
+
+    private fun deleteAllHistory(): Int {
+        val uris = history().mapNotNull { it["uri"] as? String }
+        return uris.count { deleteHistoryItem(it) }
+    }
+
+    private fun mimeFor(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "mp4" -> "video/mp4"
+        "webm" -> "video/webm"
+        "mp3" -> "audio/mpeg"
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "webp" -> "image/webp"
+        else -> "application/octet-stream"
+    }
+
+    private fun downloadLocation(): Map<String, String> {
+        val saved = activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
+            .getString(LOCATION_URI, null)
+        if (saved != null) {
+            val folder = DocumentFile.fromTreeUri(activity, Uri.parse(saved))
+            if (folder != null && folder.canWrite()) {
+                return mapOf("uri" to saved, "name" to (folder.name ?: "Dossier choisi"))
+            }
+            activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
+                .edit().remove(LOCATION_URI).apply()
+        }
+        return mapOf("uri" to "", "name" to "Downloads/DAZDOWNLOADER")
+    }
+
+    private fun chooseDownloadLocation(result: MethodChannel.Result) {
+        if (pendingLocationResult != null) {
+            result.error("busy", "Le sélecteur de dossier est déjà ouvert.", null)
+            return
+        }
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        try {
+            pendingLocationResult = result
+            activity.startActivityForResult(intent, PICK_DOWNLOAD_LOCATION)
+        } catch (error: ActivityNotFoundException) {
+            pendingLocationResult = null
+            result.error("picker_unavailable", "Impossible d’ouvrir le sélecteur de dossier.", null)
+        }
+    }
+
+    fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode != PICK_DOWNLOAD_LOCATION) return false
+        val result = pendingLocationResult ?: return true
+        pendingLocationResult = null
+        if (resultCode != Activity.RESULT_OK || data?.data == null) {
+            result.success(null)
+            return true
+        }
+        val uri = data.data!!
+        val flags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        try {
+            if ((flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == 0) {
+                result.error("location_permission", "Le dossier choisi n’autorise pas l’écriture.", null)
+                return true
+            }
+            activity.contentResolver.takePersistableUriPermission(uri, flags)
+            activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
+                .edit().putString(LOCATION_URI, uri.toString()).apply()
+            result.success(downloadLocation())
+        } catch (error: SecurityException) {
+            result.error("location_permission", "Loady n’a pas pu conserver l’accès à ce dossier.", null)
+        }
+        return true
     }
 
     private fun requiredUrl(call: MethodCall): String =
@@ -479,6 +623,10 @@ class MediaBridge(
 
     companion object {
         private const val STORAGE_PERMISSION = 4201
+        private const val PICK_DOWNLOAD_LOCATION = 4202
+        private const val LOCATION_PREFS = "download_location"
+        private const val LOCATION_URI = "tree_uri"
+        private val LOADY_FILE_NAME = Regex(".+-[0-9a-fA-F]{8}(?:-\\d{3})?\\.(?:mp4|webm|mp3|jpg|png|webp)")
         private const val MAX_NETWORK_ATTEMPTS = 3
         private const val RETRY_DELAY_MILLIS = 5_000L
     }

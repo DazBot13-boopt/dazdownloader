@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/widgets/brand_mark.dart';
 import '../../download/domain/media_models.dart';
 import '../../download/domain/media_url_parser.dart';
+import '../../download/presentation/download_controller.dart';
+import '../../history/data/download_history.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -17,11 +19,26 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   late final TextEditingController _urlController;
+  final _history = DownloadHistory();
+  List<DownloadHistoryItem> _recentDownloads = const [];
+  bool _historyLoading = true;
 
   @override
   void initState() {
     super.initState();
     _urlController = TextEditingController();
+    _loadRecentDownloads();
+  }
+
+  Future<void> _loadRecentDownloads() async {
+    try {
+      final items = await _history.load();
+      if (mounted) setState(() => _recentDownloads = items.take(3).toList());
+    } catch (_) {
+      // Keep the home screen usable when the native history is unavailable.
+    } finally {
+      if (mounted) setState(() => _historyLoading = false);
+    }
   }
 
   @override
@@ -62,13 +79,19 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    ref.listen(downloadControllerProvider, (previous, next) {
+      if (next.status == DownloadStatus.completed &&
+          previous?.status != DownloadStatus.completed) {
+        _loadRecentDownloads();
+      }
+    });
 
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final horizontalPadding = constraints.maxWidth >= 720 ? 40.0 : 20.0;
-            final columns = 3;
+            final columns = constraints.maxWidth >= 720 ? 4 : 2;
 
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
@@ -105,8 +128,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _submit(),
                         decoration: InputDecoration(
-                          hintText: 'https://www.youtube.com/watch?v=…',
-                          labelText: 'URL de la vidéo ou des photos TikTok',
+                          hintText: 'https://…',
+                          labelText: 'Lien à analyser',
                           prefixIcon: const Icon(Icons.link),
                           suffixIcon: IconButton(
                             onPressed: _pasteUrl,
@@ -135,32 +158,52 @@ class _HomePageState extends ConsumerState<HomePage> {
                           crossAxisCount: columns,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
-                          childAspectRatio: 2.35,
+                          childAspectRatio: columns == 2 ? 2.4 : 3.2,
                         ),
                         itemBuilder: (context, index) {
                           final platform = MediaPlatform.values[index];
-                          return _PlatformCard(
-                            platform: platform,
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Collez un lien ${platform.label} dans le champ ci-dessus.',
-                                  ),
-                                ),
-                              );
-                              _urlController.clear();
-                            },
-                          );
+                          return _PlatformCard(platform: platform);
                         },
                       ),
                       const SizedBox(height: 34),
                       _SectionTitle(
                         title: 'Derniers téléchargements',
-                        subtitle: 'Votre historique local apparaîtra ici.',
+                        subtitle: 'Les trois fichiers les plus récents.',
                       ),
                       const SizedBox(height: 14),
-                      const _EmptyHistoryCard(),
+                      if (_historyLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_recentDownloads.isEmpty)
+                        const _EmptyHistoryCard()
+                      else ...[
+                        for (final item in _recentDownloads)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Card(
+                              child: ListTile(
+                                onTap: () => _history.open(item),
+                                leading: Icon(_history.iconFor(item.mimeType)),
+                                title: Text(
+                                  item.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  '${item.sizeLabel} · ${item.dateLabel}',
+                                ),
+                                trailing: const Icon(Icons.open_in_new_rounded),
+                              ),
+                            ),
+                          ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => context.go('/history'),
+                            icon: const Icon(Icons.arrow_forward),
+                            label: const Text('Tout l’historique'),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -286,10 +329,9 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _PlatformCard extends StatelessWidget {
-  const _PlatformCard({required this.platform, required this.onTap});
+  const _PlatformCard({required this.platform});
 
   final MediaPlatform platform;
-  final VoidCallback onTap;
 
   FaIconData get _icon => switch (platform) {
     MediaPlatform.youtube => FontAwesomeIcons.youtube,
@@ -302,7 +344,7 @@ class _PlatformCard extends StatelessWidget {
     MediaPlatform.threads => FontAwesomeIcons.threads,
   };
 
-  Color get _color => switch (platform) {
+  Color _color(bool isDark) => switch (platform) {
     MediaPlatform.youtube => const Color(0xFFFF375F),
     MediaPlatform.tiktok => const Color(0xFF00C7BE),
     MediaPlatform.instagram => const Color(0xFFE1306C),
@@ -310,7 +352,9 @@ class _PlatformCard extends StatelessWidget {
     MediaPlatform.x => const Color(0xFF71717A),
     MediaPlatform.facebook => const Color(0xFF1877F2),
     MediaPlatform.pinterest => const Color(0xFFE60023),
-    MediaPlatform.threads => const Color(0xFF101010),
+    MediaPlatform.threads => isDark
+        ? const Color(0xFFFFFFFF)
+        : const Color(0xFF101010),
   };
 
   @override
@@ -333,27 +377,24 @@ class _PlatformCard extends StatelessWidget {
         color: Colors.transparent,
         shape: const StadiumBorder(),
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
-            child: Row(
-              children: [
-                FaIcon(_icon, color: _color, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    platform.label,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
+          child: Row(
+            children: [
+              FaIcon(_icon, color: _color(isDark), size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  platform.label,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.visible,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -390,7 +431,7 @@ class _EmptyHistoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Vos fichiers resteront sur cet appareil.',
+            'Vos fichiers enregistrés apparaîtront ici.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

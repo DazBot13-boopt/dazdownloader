@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
+import androidx.documentfile.provider.DocumentFile
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -76,10 +77,42 @@ class DownloadStore(private val context: Context) {
         return MediaBatch.save(task, files.mapIndexed { index, input -> {
             val number = if (files.size == 1) "" else "-${(index + 1).toString().padStart(3, '0')}"
             val name = "${MediaFiles.safeTitle(title)}-${task.processId.take(8)}$number.${input.extension}"
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val selectedTree = context.getSharedPreferences("download_location", Context.MODE_PRIVATE)
+                .getString("tree_uri", null)
+            if (selectedTree != null) {
+                stageSelectedTree(input.file, name, input.mime, task, selectedTree)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 stageMediaStore(input.file, name, input.mime, task)
             } else stageLegacy(input.file, name, input.mime, task, index)
         } })
+    }
+
+    private fun stageSelectedTree(file: File, name: String, mime: String, task: MediaTask, rawTreeUri: String): PendingMedia {
+        val tree = DocumentFile.fromTreeUri(context, android.net.Uri.parse(rawTreeUri))
+            ?: throw MediaFailure("storage", "Le dossier choisi n’est plus accessible. Choisissez un autre dossier.")
+        if (!tree.canWrite()) throw MediaFailure("storage", "Le dossier choisi n’est plus accessible en écriture.")
+        val partial = tree.createFile(mime, "$name.partial")
+            ?: throw MediaFailure("storage", "Impossible de créer le fichier dans le dossier choisi.")
+        try {
+            context.contentResolver.openOutputStream(partial.uri)?.use { output ->
+                file.inputStream().use { copy(it, output, task) }
+            } ?: throw MediaFailure("storage", "Impossible d’écrire dans le dossier choisi.")
+            return object : PendingMedia {
+                private var finalDocument = partial
+                override val result: Map<String, Any>
+                    get() = mapOf("uri" to finalDocument.uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length())
+                override fun publish() {
+                    if (!partial.renameTo(name)) throw MediaFailure("storage", "Impossible de finaliser le fichier téléchargé.")
+                    finalDocument = tree.findFile(name) ?: partial
+                }
+                override fun rollback() {
+                    if (finalDocument.exists() && !finalDocument.delete()) throw java.io.IOException("Cannot remove staged document")
+                }
+            }
+        } catch (error: Exception) {
+            runCatching { partial.delete() }
+            throw error
+        }
     }
 
     @android.annotation.TargetApi(Build.VERSION_CODES.Q)

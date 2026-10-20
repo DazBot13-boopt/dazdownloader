@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/download_history.dart';
+
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
@@ -10,8 +12,8 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  static const _channel = MethodChannel('dazdownloader/media');
-  List<_HistoryItem> _items = const [];
+  final _history = DownloadHistory();
+  List<DownloadHistoryItem> _items = const [];
   bool _loading = true;
   String? _error;
 
@@ -27,12 +29,7 @@ class _HistoryPageState extends State<HistoryPage> {
       _error = null;
     });
     try {
-      final result = await _channel.invokeMethod<List<dynamic>>('history');
-      final items = (result ?? const [])
-          .whereType<Map>()
-          .map(_HistoryItem.fromMap)
-          .whereType<_HistoryItem>()
-          .toList(growable: false);
+      final items = await _history.load();
       if (mounted) setState(() => _items = items);
     } catch (error) {
       if (mounted) {
@@ -47,19 +44,80 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
-  Future<void> _open(_HistoryItem item) async {
+  Future<void> _open(DownloadHistoryItem item) async {
     try {
-      await _channel.invokeMethod<void>('open', {
-        'uri': item.uri,
-        'mimeType': item.mimeType,
-      });
-    } on PlatformException catch (error) {
+      await _history.open(item);
+    } on Object catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message ?? 'Impossible d’ouvrir le fichier.'),
-        ),
+        SnackBar(content: Text('Impossible d’ouvrir le fichier : $error')),
       );
+    }
+  }
+
+  Future<void> _delete(DownloadHistoryItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer le fichier ?'),
+        content: Text('« ${item.name} » sera supprimé de l’appareil.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await DownloadHistory.channel.invokeMethod<bool>('deleteHistoryItem', {
+        'uri': item.uri,
+      });
+      await _load();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Suppression impossible : $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Tout supprimer ?'),
+        content: const Text(
+          'Tous les fichiers téléchargés par Loady seront supprimés de l’appareil.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Tout supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await DownloadHistory.channel.invokeMethod<int>('deleteAllHistory');
+      await _load();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Suppression impossible : $error')),
+        );
+      }
     }
   }
 
@@ -70,6 +128,12 @@ class _HistoryPageState extends State<HistoryPage> {
       appBar: AppBar(
         title: const Text('Historique'),
         actions: [
+          if (_items.isNotEmpty)
+            IconButton(
+              onPressed: _deleteAll,
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: 'Tout supprimer',
+            ),
           IconButton(
             onPressed: _load,
             icon: const Icon(Icons.refresh),
@@ -114,7 +178,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           24,
                         ),
                         child: Icon(
-                          _iconFor(item.mimeType),
+                          _history.iconFor(item.mimeType),
                           color: theme.colorScheme.primary,
                         ),
                       ),
@@ -124,7 +188,11 @@ class _HistoryPageState extends State<HistoryPage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text('${item.sizeLabel} · ${item.dateLabel}'),
-                      trailing: const Icon(Icons.open_in_new_rounded, size: 20),
+                      trailing: IconButton(
+                        onPressed: () => _delete(item),
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Supprimer',
+                      ),
                     ),
                   );
                 },
@@ -133,61 +201,6 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  IconData _iconFor(String mime) {
-    if (mime.startsWith('video/')) return Icons.movie_outlined;
-    if (mime.startsWith('audio/')) return Icons.music_note_outlined;
-    return Icons.image_outlined;
-  }
-}
-
-class _HistoryItem {
-  const _HistoryItem({
-    required this.uri,
-    required this.name,
-    required this.mimeType,
-    required this.sizeBytes,
-    required this.dateAdded,
-  });
-
-  final String uri;
-  final String name;
-  final String mimeType;
-  final int sizeBytes;
-  final DateTime dateAdded;
-
-  static _HistoryItem? fromMap(Map item) {
-    final uri = item['uri'];
-    final name = item['name'];
-    final mime = item['mimeType'];
-    final size = item['sizeBytes'];
-    final date = item['dateAdded'];
-    if (uri is! String ||
-        name is! String ||
-        mime is! String ||
-        size is! num ||
-        date is! num) {
-      return null;
-    }
-    return _HistoryItem(
-      uri: uri,
-      name: name,
-      mimeType: mime,
-      sizeBytes: size.toInt(),
-      dateAdded: DateTime.fromMillisecondsSinceEpoch(date.toInt()),
-    );
-  }
-
-  String get sizeLabel {
-    final mb = sizeBytes / (1024 * 1024);
-    return '${mb.toStringAsFixed(mb >= 10 ? 0 : 1)} Mo';
-  }
-
-  String get dateLabel {
-    final days = DateTime.now().difference(dateAdded).inDays;
-    if (days == 0) return 'Aujourd’hui';
-    if (days == 1) return 'Hier';
-    return '${dateAdded.day.toString().padLeft(2, '0')}/${dateAdded.month.toString().padLeft(2, '0')}/${dateAdded.year}';
-  }
 }
 
 class _MessageState extends StatelessWidget {
