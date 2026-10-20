@@ -206,6 +206,8 @@ class AndroidMediaEngine implements MediaEngine {
       state: state,
       url: data['url'] is String ? Uri.tryParse(data['url'] as String) : null,
       message: data['message'] as String?,
+      percent: (data['percent'] as num?)?.toDouble(),
+      etaSeconds: (data['etaSeconds'] as num?)?.toInt(),
       result: result,
     );
   }

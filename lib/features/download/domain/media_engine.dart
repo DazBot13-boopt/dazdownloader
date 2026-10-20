@@ -20,6 +20,8 @@ class TransferSnapshot {
     required this.state,
     this.url,
     this.message,
+    this.percent,
+    this.etaSeconds,
     this.result,
   });
 
@@ -27,6 +29,8 @@ class TransferSnapshot {
   final String state;
   final Uri? url;
   final String? message;
+  final double? percent;
+  final int? etaSeconds;
   final DownloadedMedia? result;
 }
 

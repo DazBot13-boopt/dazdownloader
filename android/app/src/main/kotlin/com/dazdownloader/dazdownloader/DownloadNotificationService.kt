@@ -41,7 +41,9 @@ class DownloadNotificationService : Service() {
 
     private fun notification(text: String, percent: Int?, ongoing: Boolean, autoCancel: Boolean = false): Notification {
         val open = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
+            this, 0, Intent(this, MainActivity::class.java)
+                .setAction("com.dazdownloader.OPEN_TRANSFER")
+                .putExtra("open_transfer", true),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)

@@ -21,7 +21,14 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   static const _share = MethodChannel('dazdownloader/share');
   static const _shareEvents = EventChannel('dazdownloader/share/events');
+  static const _transferNavigation = MethodChannel(
+    'dazdownloader/transfer_navigation',
+  );
+  static const _transferNavigationEvents = EventChannel(
+    'dazdownloader/transfer_navigation/events',
+  );
   StreamSubscription<Object?>? _subscription;
+  StreamSubscription<Object?>? _transferSubscription;
   String? _lastLink;
 
   @override
@@ -31,6 +38,19 @@ class _AppShellState extends ConsumerState<AppShell> {
       _openSharedText,
     );
     unawaited(_readPending());
+    _transferSubscription = _transferNavigationEvents
+        .receiveBroadcastStream()
+        .listen(_openTransferScreen);
+    unawaited(_readPendingTransfer());
+  }
+
+  Future<void> _readPendingTransfer() async {
+    try {
+      final open = await _transferNavigation.invokeMethod<bool>('pending');
+      if (open == true) _openTransferScreen(true);
+    } on MissingPluginException {
+      // Transfer navigation is Android-only.
+    }
   }
 
   Future<void> _readPending() async {
@@ -47,7 +67,17 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _transferSubscription?.cancel();
     super.dispose();
+  }
+
+  void _openTransferScreen(Object? value) {
+    if (!mounted || value != true) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !widget.location.startsWith('/download')) {
+        context.go('/download');
+      }
+    });
   }
 
   void _openSharedText(Object? value) {

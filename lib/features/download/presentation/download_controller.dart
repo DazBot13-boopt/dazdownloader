@@ -72,6 +72,7 @@ class DownloadController extends Notifier<DownloadState> {
   int _sequence = 0;
   bool _disposed = false;
   String? _engineVersion;
+  Timer? _transferPoll;
   late DownloadSessionStore _sessionStore;
   late AnalyticsService _analytics;
 
@@ -89,8 +90,13 @@ class DownloadController extends Notifier<DownloadState> {
     ref.onDispose(() {
       _disposed = true;
       unawaited(subscription.cancel());
+      _transferPoll?.cancel();
       final task = _activeTask;
-      if (task != null) {
+      // Android owns a started download and can keep it alive while Flutter's
+      // view is recreated. Resolve/update operations have no such owner.
+      if (task != null &&
+          (state.status == DownloadStatus.resolving ||
+              state.status == DownloadStatus.updating)) {
         unawaited(_engine.cancel(task).then<void>((_) {}, onError: (_, _) {}));
       }
     });
@@ -129,10 +135,120 @@ class DownloadController extends Notifier<DownloadState> {
           error: transfer.message ?? 'Le dernier téléchargement a échoué.',
           restored: true,
         );
+      } else if (transfer.state == 'interrupted' ||
+          transfer.state == 'cancelled') {
+        state = DownloadState(
+          status: transfer.state == 'cancelled'
+              ? DownloadStatus.cancelled
+              : DownloadStatus.failed,
+          url: transfer.url,
+          error: transfer.message ??
+              'Le téléchargement a été interrompu. Relancez-le depuis l’accueil.',
+          restored: true,
+        );
+      } else if (const {
+        'downloading',
+        'processing',
+        'saving',
+        'retrying',
+      }.contains(transfer.state)) {
+        _activeTask = transfer.taskId;
+        state = DownloadState(
+          status: switch (transfer.state) {
+            'processing' => DownloadStatus.processing,
+            'saving' => DownloadStatus.saving,
+            _ => DownloadStatus.downloading,
+          },
+          url: transfer.url,
+          progress: MediaProgress(
+            taskId: transfer.taskId,
+            phase: switch (transfer.state) {
+              'processing' => MediaTransferPhase.processing,
+              'saving' => MediaTransferPhase.saving,
+              _ => MediaTransferPhase.downloading,
+            },
+            percent: transfer.percent,
+            etaSeconds: transfer.etaSeconds,
+          ),
+          restored: true,
+        );
+        _startTransferPolling(transfer.taskId);
       }
     } on MediaEngineException {
       // The transfer journal is supplemental. Pending analysis restoration is
       // still available if an older Android engine does not expose it.
+    }
+  }
+
+  void _startTransferPolling(String taskId) {
+    _transferPoll?.cancel();
+    _transferPoll = Timer.periodic(const Duration(seconds: 1), (_) {
+      unawaited(_refreshRestoredTransfer(taskId));
+    });
+  }
+
+  Future<void> _refreshRestoredTransfer(String taskId) async {
+    if (_disposed || _activeTask != taskId) {
+      _transferPoll?.cancel();
+      return;
+    }
+    try {
+      final transfer = await _engine.lastTransfer();
+      if (_disposed || _activeTask != taskId || transfer?.taskId != taskId) return;
+      if (state.status == DownloadStatus.cancelling) return;
+      final current = transfer!;
+      if (const {'downloading', 'processing', 'saving', 'retrying'}
+          .contains(current.state)) {
+        final phase = switch (current.state) {
+          'processing' => MediaTransferPhase.processing,
+          'saving' => MediaTransferPhase.saving,
+          _ => MediaTransferPhase.downloading,
+        };
+        state = DownloadState(
+          status: switch (phase) {
+            MediaTransferPhase.processing => DownloadStatus.processing,
+            MediaTransferPhase.saving => DownloadStatus.saving,
+            MediaTransferPhase.downloading => DownloadStatus.downloading,
+          },
+          url: current.url,
+          progress: MediaProgress(
+            taskId: taskId,
+            phase: phase,
+            percent: current.percent,
+            etaSeconds: current.etaSeconds,
+          ),
+        );
+      } else if (current.state == 'completed') {
+        _activeTask = null;
+        _transferPoll?.cancel();
+        if (current.result != null) {
+          state = DownloadState(
+            status: DownloadStatus.completed,
+            url: current.url,
+            result: current.result,
+          );
+          unawaited(_sessionStore.clearPendingUrl());
+        } else {
+          state = DownloadState(
+            status: DownloadStatus.failed,
+            url: current.url,
+            error: 'Le téléchargement est terminé, mais son fichier est introuvable.',
+          );
+        }
+      } else if (const {'failed', 'interrupted', 'cancelled'}
+          .contains(current.state)) {
+        _activeTask = null;
+        _transferPoll?.cancel();
+        state = DownloadState(
+          status: current.state == 'cancelled'
+              ? DownloadStatus.cancelled
+              : DownloadStatus.failed,
+          url: current.url,
+          error: current.message ?? 'Le téléchargement a été interrompu.',
+        );
+      }
+    } on MediaEngineException {
+      // A temporary channel error should not hide a transfer that may still run.
     }
   }
 

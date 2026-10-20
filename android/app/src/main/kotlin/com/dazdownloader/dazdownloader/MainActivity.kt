@@ -13,9 +13,12 @@ class MainActivity : FlutterActivity() {
     private var mediaBridge: MediaBridge? = null
     private var pendingSharedText: String? = null
     private var shareSink: EventChannel.EventSink? = null
+    private var pendingTransferOpen = false
+    private var transferNavigationSink: EventChannel.EventSink? = null
 
     override fun onCreate(state: android.os.Bundle?) {
         pendingSharedText = sharedText(intent)
+        pendingTransferOpen = intent?.getBooleanExtra(EXTRA_OPEN_TRANSFER, false) == true
         super.onCreate(state)
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -43,6 +46,22 @@ class MainActivity : FlutterActivity() {
                     shareSink = null
                 }
             })
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dazdownloader/transfer_navigation")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "pending") {
+                    result.success(pendingTransferOpen)
+                    pendingTransferOpen = false
+                } else result.notImplemented()
+            }
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "dazdownloader/transfer_navigation/events")
+            .setStreamHandler(object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                    transferNavigationSink = events
+                }
+                override fun onCancel(arguments: Any?) {
+                    transferNavigationSink = null
+                }
+            })
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -51,6 +70,12 @@ class MainActivity : FlutterActivity() {
         sharedText(intent)?.let { text ->
             pendingSharedText = text
             shareSink?.success(text)
+        }
+        if (intent.getBooleanExtra(EXTRA_OPEN_TRANSFER, false)) {
+            if (transferNavigationSink != null) {
+                transferNavigationSink?.success(true)
+                pendingTransferOpen = false
+            } else pendingTransferOpen = true
         }
     }
 
@@ -79,5 +104,8 @@ class MainActivity : FlutterActivity() {
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
 
-    companion object { private const val NOTIFICATION_PERMISSION = 4301 }
+    companion object {
+        private const val NOTIFICATION_PERMISSION = 4301
+        private const val EXTRA_OPEN_TRANSFER = "open_transfer"
+    }
 }

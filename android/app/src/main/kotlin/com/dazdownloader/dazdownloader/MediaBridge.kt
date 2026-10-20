@@ -74,7 +74,7 @@ class MediaBridge(
                     permissionRequest = null
                     pending.second.error("cancelled", "Téléchargement annulé.", null)
                     result.success(true)
-                } else result.success(active?.takeIf { it.id == id }?.cancel() ?: false)
+                } else result.success((active ?: processDownloadTask)?.takeIf { it.id == id }?.cancel() ?: false)
             }
             "open" -> open(call, result)
             "history" -> result.success(history())
@@ -94,9 +94,16 @@ class MediaBridge(
                     .edit().remove(LOCATION_URI).apply()
                 result.success(downloadLocation())
             }
-            "transferStatus" -> result.success(journal.snapshot())
+            "transferStatus" -> {
+                if (journal.reconcileProcess()) {
+                    runCatching {
+                        DownloadNotificationService.failed(activity, "Téléchargement interrompu")
+                    }
+                }
+                result.success(journal.snapshot())
+            }
             "resolve", "download", "update" -> {
-                if (active != null || permissionRequest != null) {
+                if (active != null || processDownloadTask != null || permissionRequest != null) {
                     result.error("busy", "Une opération est déjà en cours. Attendez ou annulez-la.", null)
                     return
                 }
@@ -135,6 +142,7 @@ class MediaBridge(
         active = task
         activeOperation = call.method
         if (call.method == "download") {
+            processDownloadTask = task
             journal.start(task.id, requiredUrl(call))
             DownloadNotificationService.start(activity, task.id)
         }
@@ -178,6 +186,7 @@ class MediaBridge(
                         active = null
                         activeOperation = null
                     }
+                    if (processDownloadTask === task) processDownloadTask = null
                     if (!closed) {
                         val error = failure
                         if (error == null) result.success(value)
@@ -537,7 +546,7 @@ class MediaBridge(
     }
 
     private fun emit(task: MediaTask, phase: String, percent: Double? = null, eta: Long? = null) {
-        journal.update(task.id, phase)
+        journal.update(task.id, phase, percent = percent, eta = eta)
         DownloadNotificationService.update(activity, task.id, when (phase) {
             "processing" -> "Traitement du média…"
             "saving" -> "Enregistrement du fichier…"
@@ -629,5 +638,6 @@ class MediaBridge(
         private val LOADY_FILE_NAME = Regex(".+-[0-9a-fA-F]{8}(?:-\\d{3})?\\.(?:mp4|webm|mp3|jpg|png|webp)")
         private const val MAX_NETWORK_ATTEMPTS = 3
         private const val RETRY_DELAY_MILLIS = 5_000L
+        @Volatile private var processDownloadTask: MediaTask? = null
     }
 }
