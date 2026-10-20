@@ -1,19 +1,95 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/settings/theme_mode_controller.dart';
 
 const _devPortfolioUrl = 'https://togbedji-daziano.vercel.app/';
+const _privacyPolicyUrl = 'https://loady-site.vercel.app/#confidentialite';
 
 final _appVersionProvider = FutureProvider<String>((ref) async {
   final info = await PackageInfo.fromPlatform();
   return '${info.version}+${info.buildNumber}';
 });
 
-class SettingsPage extends ConsumerWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  static const _channel = MethodChannel('dazdownloader/media');
+  String _locationName = 'Downloads/DAZDOWNLOADER';
+  bool _customLocation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocation();
+  }
+
+  Future<void> _loadLocation() async {
+    try {
+      final location = await _channel.invokeMapMethod<String, String>(
+        'getDownloadLocation',
+      );
+      if (!mounted || location == null) return;
+      setState(() {
+        _locationName = location['name'] ?? 'Downloads/DAZDOWNLOADER';
+        _customLocation = (location['uri'] ?? '').isNotEmpty;
+      });
+    } catch (_) {
+      // The default destination remains available on older app installations.
+    }
+  }
+
+  Future<void> _chooseLocation() async {
+    try {
+      final location = await _channel.invokeMapMethod<String, String>(
+        'chooseDownloadLocation',
+      );
+      if (!mounted || location == null) return;
+      setState(() {
+        _locationName = location['name'] ?? 'Dossier choisi';
+        _customLocation = (location['uri'] ?? '').isNotEmpty;
+      });
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? 'Sélection impossible.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sélection de dossier indisponible.')),
+      );
+    }
+  }
+
+  Future<void> _resetLocation() async {
+    try {
+      await _channel.invokeMethod<Map>('resetDownloadLocation');
+      if (!mounted) return;
+      setState(() {
+        _locationName = 'Downloads/DAZDOWNLOADER';
+        _customLocation = false;
+      });
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? 'Modification impossible.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Modification de dossier indisponible.')),
+      );
+    }
+  }
 
   Future<void> _openDevPortfolio(BuildContext context) async {
     final uri = Uri.parse(_devPortfolioUrl);
@@ -25,8 +101,20 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
+  Future<void> _openPrivacyPolicy() async {
+    final launched = await launchUrl(
+      Uri.parse(_privacyPolicyUrl),
+      mode: LaunchMode.externalApplication,
+    ).catchError((_) => false);
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible d’ouvrir la politique.')),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     ref.watch(themeModeProvider);
     final isDark = theme.brightness == Brightness.dark;
@@ -60,18 +148,18 @@ class SettingsPage extends ConsumerWidget {
                   ),
                 ),
                 const Divider(height: 1),
-                const ListTile(
-                  leading: Icon(Icons.download_outlined),
-                  title: Text('Emplacement'),
-                  subtitle: Text('Downloads · Android'),
-                  trailing: Icon(Icons.chevron_right),
-                ),
-                const Divider(height: 1),
-                const ListTile(
-                  leading: Icon(Icons.high_quality_outlined),
-                  title: Text('Qualité par défaut'),
-                  subtitle: Text('1080p'),
-                  trailing: Icon(Icons.chevron_right),
+                ListTile(
+                  leading: const Icon(Icons.download_outlined),
+                  title: const Text('Emplacement de téléchargement'),
+                  subtitle: Text(_locationName),
+                  onTap: _chooseLocation,
+                  trailing: _customLocation
+                      ? IconButton(
+                          tooltip: 'Rétablir le dossier Loady',
+                          onPressed: _resetLocation,
+                          icon: const Icon(Icons.settings_backup_restore),
+                        )
+                      : const Icon(Icons.chevron_right),
                 ),
               ],
             ),
@@ -97,6 +185,13 @@ class SettingsPage extends ConsumerWidget {
                       error: (_, _) => 'Version inconnue · Android',
                     ),
                   ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: const Text('Politique de confidentialité'),
+                  trailing: const Icon(Icons.open_in_new, size: 18),
+                  onTap: _openPrivacyPolicy,
                 ),
                 const Divider(height: 1),
                 ListTile(
