@@ -23,6 +23,7 @@ final appRouter = GoRouter(
           path: '/download',
           builder: (context, state) => DownloadPage(
             url: state.uri.queryParameters['url'],
+            restored: state.uri.queryParameters['restored'] == '1',
           ),
         ),
         GoRoute(

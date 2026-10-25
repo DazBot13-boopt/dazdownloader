@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:dazdownloader/features/download/domain/media_engine.dart';
 import 'package:dazdownloader/features/download/presentation/download_controller.dart';
 import 'package:dazdownloader/features/download/presentation/download_page.dart';
 
@@ -44,4 +45,42 @@ void main() {
       await engine.events.close();
     },
   );
+
+  testWidgets('a restored link is never analyzed again on its own', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 932));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final engine = TestMediaEngine()
+      ..persistedTransfer = TransferSnapshot(
+        taskId: 'native-download',
+        state: 'completed',
+        url: testPreview.sourceUrl,
+        result: testDownload,
+      );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [mediaEngineProvider.overrideWithValue(engine)],
+        child: MaterialApp(
+          home: DownloadPage(
+            url: testPreview.sourceUrl.toString(),
+            restored: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(engine.resolveCalls, 0);
+    expect(find.text('Dernière analyse'), findsOneWidget);
+    expect(find.text('Téléchargement terminé'), findsOneWidget);
+
+    // The engine only runs again when the user explicitly asks for it.
+    await tester.ensureVisible(find.text('Réessayer l’analyse'));
+    await tester.tap(find.text('Réessayer l’analyse'));
+    await tester.pumpAndSettle();
+    expect(engine.resolveCalls, 1);
+
+    await tester.pumpWidget(const SizedBox());
+    await engine.events.close();
+  });
 }

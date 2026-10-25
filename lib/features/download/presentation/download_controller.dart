@@ -112,6 +112,11 @@ class DownloadController extends Notifier<DownloadState> {
           state.url != null) {
         return;
       }
+      // The native journal keeps its entry until the next transfer replaces
+      // it. Each outcome is therefore surfaced once; otherwise every later
+      // launch would reopen the analysis screen for a finished download.
+      final seen = await _sessionStore.readSeenTransferId();
+      if (_disposed || seen == transfer.taskId || state.url != null) return;
       if (transfer.state == 'completed' && transfer.result != null) {
         state = DownloadState(
           status: DownloadStatus.completed,
@@ -129,7 +134,10 @@ class DownloadController extends Notifier<DownloadState> {
           error: transfer.message ?? 'Le dernier téléchargement a échoué.',
           restored: true,
         );
+      } else {
+        return; // Nothing conclusive to restore for this transfer yet.
       }
+      await _sessionStore.saveSeenTransferId(transfer.taskId);
     } on MediaEngineException {
       // The transfer journal is supplemental. Pending analysis restoration is
       // still available if an older Android engine does not expose it.
@@ -266,7 +274,13 @@ class DownloadController extends Notifier<DownloadState> {
       }
       _fail(task, error);
     } finally {
-      if (_activeTask == task) _activeTask = null;
+      if (_activeTask == task) {
+        _activeTask = null;
+        // The user watched this transfer reach its outcome, so the native
+        // journal must not replay it on the next launch. A disposed
+        // controller means they left: that outcome is still worth restoring.
+        if (!_disposed) unawaited(_sessionStore.saveSeenTransferId(task));
+      }
     }
   }
 
