@@ -9,7 +9,7 @@ import java.io.File
 class MediaCatalogTest {
     private fun stream(id: String, ext: String = "mp4", height: Int = 720,
         video: Boolean = true, audio: Boolean = true, size: Long? = null,
-        bitrate: Int = 1000, drm: Boolean = false): JSONObject = JSONObject().apply {
+        bitrate: Int = 1000, drm: Boolean = false, language: Int? = null): JSONObject = JSONObject().apply {
         put("format_id", id)
         put("url", "https://cdn.example.com/$id")
         put("ext", ext)
@@ -19,6 +19,7 @@ class MediaCatalogTest {
         put("tbr", bitrate)
         put("has_drm", drm)
         if (size != null) put("filesize", size)
+        if (language != null) put("language_preference", language)
     }
 
     private fun metadata(vararg formats: JSONObject): String = JSONObject().apply {
@@ -50,6 +51,29 @@ class MediaCatalogTest {
         assertEquals("313+251", result.formats.first().selector)
         assertEquals(2160, result.formats.first().height)
         assertNull(result.formats.first().sizeBytes)
+    }
+
+    @Test fun aDubbedTrackNeverReplacesTheOriginalAudio() {
+        val result = MediaCatalog.parse(metadata(
+            stream("137", height = 1080, audio = false, size = 1000),
+            // The dub is the louder track, so bitrate alone would pick it.
+            stream("140-dub", ext = "m4a", height = 0, video = false, size = 400,
+                bitrate = 900, language = -1),
+            stream("140-original", ext = "m4a", height = 0, video = false, size = 200,
+                bitrate = 100, language = 10)))
+        assertEquals("137+140-original", result.formats.first().selector)
+        assertEquals(1200L, result.formats.first().sizeBytes)
+        assertEquals("140-original", result.formats.last().selector)
+    }
+
+    @Test fun audioDescriptionIsNotMistakenForTheOriginalTrack() {
+        val result = MediaCatalog.parse(metadata(
+            stream("313", ext = "webm", height = 2160, audio = false),
+            stream("251-described", ext = "webm", height = 0, video = false,
+                bitrate = 2000, language = -10),
+            stream("251-original", ext = "webm", height = 0, video = false,
+                bitrate = 120, language = 10)))
+        assertEquals("313+251-original", result.formats.first().selector)
     }
 
     @Test fun duplicateResolutionsSelectTheBestAvailableStream() {

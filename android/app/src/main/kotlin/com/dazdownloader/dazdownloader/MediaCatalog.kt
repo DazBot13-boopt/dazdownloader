@@ -42,6 +42,17 @@ data class MediaCatalog(
         private val videoExtensions = setOf("mp4", "webm")
         private val formatId = Regex("[a-zA-Z0-9_.-]+")
 
+        /**
+         * Keeps only the streams the extractor ranks highest for language.
+         * yt-dlp reports 10 for an original YouTube track, -1 for a dub and a
+         * lower value for an audio description. An extractor that reports
+         * nothing leaves every candidate tied, so bitrate still decides.
+         */
+        private fun original(candidates: List<Stream>): List<Stream> {
+            val best = candidates.maxOfOrNull { it.languagePreference } ?: return candidates
+            return candidates.filter { it.languagePreference == best }
+        }
+
         fun parse(json: String): MediaCatalog {
             val data = JSONObject(json)
             if (data.has("entries") || data.optString("_type") in setOf("playlist", "multi_video")) {
@@ -70,10 +81,17 @@ data class MediaCatalog(
                     hasVideo, hasAudio,
                     stream.optLong("filesize").takeIf { it > 0 }
                         ?: stream.optLong("filesize_approx").takeIf { it > 0 },
-                    stream.optDouble("tbr", 0.0).takeIf { it.isFinite() } ?: 0.0)
+                    stream.optDouble("tbr", 0.0).takeIf { it.isFinite() } ?: 0.0,
+                    stream.optInt("language_preference", 0))
             }
-            val audio = streams.filter { it.hasAudio && !it.hasVideo }
-            val videoOptions = streams.filter { it.hasVideo }.mapNotNull { video ->
+            // YouTube ships dubbed tracks beside the original audio. Picking
+            // the loudest bitrate would hand back a translation of a video the
+            // user chose in its own language, so only the track the extractor
+            // ranks highest for language is ever offered.
+            val audio = original(streams.filter { it.hasAudio && !it.hasVideo })
+            val videoStreams = original(streams.filter { it.hasVideo && it.hasAudio }) +
+                streams.filter { it.hasVideo && !it.hasAudio }
+            val videoOptions = videoStreams.mapNotNull { video ->
                 val companion = if (!video.hasAudio) audio.filter {
                     if (video.extension == "mp4") it.extension in setOf("m4a", "mp4", "aac")
                     else it.extension in setOf("webm", "opus")
@@ -92,7 +110,7 @@ data class MediaCatalog(
             }.sortedWith(compareByDescending<NativeFormat> { it.height ?: 0 }.thenBy { it.extension })
 
             val bestAudio = audio.maxByOrNull { it.bitrate }
-                ?: streams.filter { it.hasAudio }.maxByOrNull { it.bitrate }
+                ?: original(streams.filter { it.hasAudio }).maxByOrNull { it.bitrate }
             val options = videoOptions + listOfNotNull(bestAudio?.let {
                 NativeFormat("mp3-audio", "mp3", null, it.id, null)
             })
@@ -103,6 +121,9 @@ data class MediaCatalog(
                 runCatching { URI(it).scheme == "https" }.getOrDefault(false)
             }
             return MediaCatalog(
+                // yt-dlp already prefers the video's own primary-language
+                // metadata, so no `lang` extractor argument is passed: the
+                // title must stay in the language of the pasted link.
                 data.optString("title").ifBlank { "Vidéo" },
                 data.optString("uploader").ifBlank { data.optString("channel").ifBlank { "Auteur inconnu" } },
                 duration, thumbnail, options,
@@ -111,7 +132,8 @@ data class MediaCatalog(
     }
 
     private data class Stream(val id: String, val extension: String, val height: Int?,
-        val hasVideo: Boolean, val hasAudio: Boolean, val size: Long?, val bitrate: Double)
+        val hasVideo: Boolean, val hasAudio: Boolean, val size: Long?, val bitrate: Double,
+        val languagePreference: Int = 0)
 }
 
 object MediaUrls {
