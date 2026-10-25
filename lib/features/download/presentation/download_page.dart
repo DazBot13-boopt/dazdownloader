@@ -8,9 +8,14 @@ import '../domain/media_models.dart';
 import 'download_controller.dart';
 
 class DownloadPage extends ConsumerStatefulWidget {
-  const DownloadPage({super.key, this.url});
+  const DownloadPage({super.key, this.url, this.restored = false});
 
   final String? url;
+
+  /// True when the screen was reopened from a saved session instead of a link
+  /// the user just submitted. The restored state is shown as it is, with a
+  /// manual retry, so returning to the app never restarts the engine.
+  final bool restored;
 
   @override
   ConsumerState<DownloadPage> createState() => _DownloadPageState();
@@ -31,7 +36,7 @@ class _DownloadPageState extends ConsumerState<DownloadPage> {
 
   void _resolve() {
     final url = widget.url;
-    if (url != null) {
+    if (url != null && !widget.restored) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           ref.read(downloadControllerProvider.notifier).resolve(url);
@@ -46,7 +51,7 @@ class _DownloadPageState extends ConsumerState<DownloadPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Analyse'),
+        title: Text(widget.restored ? 'Dernière analyse' : 'Analyse'),
         leading: IconButton(
           onPressed: () => context.go('/'),
           icon: const Icon(Icons.arrow_back),

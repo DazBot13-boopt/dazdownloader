@@ -7,10 +7,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dazdownloader/app.dart';
 import 'package:dazdownloader/features/download/presentation/download_controller.dart';
 import 'package:dazdownloader/features/download/domain/media_models.dart';
+import 'package:dazdownloader/features/history/data/download_history.dart';
 
 import 'support/test_media_engine.dart';
 
 void main() {
+  setUp(() {
+    // The home screen shows a spinner until the native history answers. With
+    // no handler the channel call never completes in a test, so the spinner
+    // animates forever and pumpAndSettle times out.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          DownloadHistory.channel,
+          (call) async => call.method == 'history' ? <dynamic>[] : null,
+        );
+  });
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(DownloadHistory.channel, null);
+  });
+
   testWidgets('renders the home experience', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: DazDownloaderApp()));
     await tester.pumpAndSettle();

@@ -91,7 +91,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         return;
       }
       ref.read(downloadControllerProvider.notifier).consumeRestoreNavigation();
-      context.push('/download?url=${Uri.encodeComponent(next.url.toString())}');
+      // Restoring only reopens the screen on the state already in memory. The
+      // marker keeps the page from relaunching an analysis the user never
+      // asked for again, which is the whole point of restoring it.
+      context.push(
+        '/download?url=${Uri.encodeComponent(next.url.toString())}&restored=1',
+      );
     });
     return Scaffold(
       body: widget.child,

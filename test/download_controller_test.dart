@@ -118,6 +118,9 @@ void main() {
   test('can cancel metadata resolution and recover', () async {
     engine.resolveCompleter = Completer<MediaPreview>();
     final operation = controller.resolve(testPreview.sourceUrl.toString());
+    // The cancel button appears only once the state turns busy, which happens
+    // after the pending link is saved. Cancelling before that reaches no task.
+    await Future<void>.delayed(Duration.zero);
     await controller.cancel();
     await operation;
     expect(state().status, DownloadStatus.cancelled);
@@ -170,14 +173,13 @@ void main() {
     },
   );
 
-  test('replays the saved analysis after the application is rebuilt', () async {
+  test('an interrupted analysis is offered again, never relaunched', () async {
     const savedUrl = 'https://www.youtube.com/watch?v=test';
+    final store = _MemorySessionStore(savedUrl);
     final restoredContainer = ProviderContainer(
       overrides: [
         mediaEngineProvider.overrideWithValue(engine),
-        downloadSessionStoreProvider.overrideWithValue(
-          _MemorySessionStore(savedUrl),
-        ),
+        downloadSessionStoreProvider.overrideWithValue(store),
       ],
     );
     addTearDown(restoredContainer.dispose);
@@ -187,11 +189,14 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     final restored = restoredContainer.read(downloadControllerProvider);
-    expect(engine.resolveCalls, 1);
-    expect(restored.status, DownloadStatus.ready);
+    // The link comes back with a manual retry; waking the engine on its own
+    // is what made every launch re-analyze the last link.
+    expect(engine.resolveCalls, 0);
+    expect(restored.status, DownloadStatus.failed);
     expect(restored.url, Uri.parse(savedUrl));
-    expect(restored.preview, same(testPreview));
+    expect(restored.preview, isNull);
     expect(restored.restored, isTrue);
+    expect(store.value, isNull);
 
     restoredContainer
         .read(downloadControllerProvider.notifier)
@@ -266,6 +271,67 @@ void main() {
     },
   );
 
+  test('a restored transfer is surfaced once, not on every launch', () async {
+    final store = _MemorySessionStore(null);
+    final transfer = TransferSnapshot(
+      taskId: 'native-download',
+      state: 'completed',
+      url: testPreview.sourceUrl,
+      result: testDownload,
+    );
+
+    // Each call stands for a cold launch: the native journal keeps its entry
+    // until a new transfer replaces it, so it is read again every time.
+    Future<DownloadState> launch() async {
+      final launchEngine = TestMediaEngine()..persistedTransfer = transfer;
+      final launchContainer = ProviderContainer(
+        overrides: [
+          mediaEngineProvider.overrideWithValue(launchEngine),
+          downloadSessionStoreProvider.overrideWithValue(store),
+        ],
+      );
+      addTearDown(() async {
+        launchContainer.dispose();
+        await launchEngine.events.close();
+      });
+      launchContainer.read(downloadControllerProvider);
+      await Future<void>.delayed(Duration.zero);
+      return launchContainer.read(downloadControllerProvider);
+    }
+
+    final first = await launch();
+    expect(first.status, DownloadStatus.completed);
+    expect(first.restored, isTrue);
+    expect(store.seen, 'native-download');
+
+    final second = await launch();
+    expect(second.status, DownloadStatus.idle);
+    expect(second.restored, isFalse);
+    expect(second.url, isNull);
+  });
+
+  test('watching a download finish marks its transfer as seen', () async {
+    final store = _MemorySessionStore(null);
+    final watched = ProviderContainer(
+      overrides: [
+        mediaEngineProvider.overrideWithValue(engine),
+        downloadSessionStoreProvider.overrideWithValue(store),
+      ],
+    );
+    addTearDown(watched.dispose);
+    final notifier = watched.read(downloadControllerProvider.notifier);
+
+    await notifier.resolve(testPreview.sourceUrl.toString());
+    final operation = notifier.download(testFormat);
+    engine.downloadCompleter!.complete(testDownload);
+    await operation;
+
+    expect(watched.read(downloadControllerProvider).status,
+        DownloadStatus.completed);
+    expect(store.seen, isNotNull);
+    expect(store.value, isNull);
+  });
+
   test(
     'restoring a completed native transfer also clears the pending link',
     () async {
@@ -297,6 +363,7 @@ class _MemorySessionStore extends DownloadSessionStore {
   _MemorySessionStore(this.value);
 
   String? value;
+  String? seen;
 
   @override
   Future<String?> readPendingUrl() async => value;
@@ -309,5 +376,13 @@ class _MemorySessionStore extends DownloadSessionStore {
   @override
   Future<void> clearPendingUrl() async {
     value = null;
+  }
+
+  @override
+  Future<String?> readSeenTransferId() async => seen;
+
+  @override
+  Future<void> saveSeenTransferId(String taskId) async {
+    seen = taskId;
   }
 }
