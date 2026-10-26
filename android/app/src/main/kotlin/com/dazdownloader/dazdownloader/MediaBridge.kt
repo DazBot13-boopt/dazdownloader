@@ -389,6 +389,7 @@ class MediaBridge(
 
     private fun resolve(url: String, task: MediaTask): Map<String, Any?> {
         var source = url
+        var photoFailure: Exception? = null
         if (TiktokPhotos.isTiktok(source)) {
             val client = PublicWebClient(task)
             val direct = TiktokPhotos.postId(source) != null
@@ -411,11 +412,16 @@ class MediaBridge(
                     cache(url, catalog)
                     return catalog.toMap()
                 }
+                // TikTok only mints /photo/ links for image posts, so reaching
+                // the page without an image set means it withheld the media.
+                if ("/photo/" in url) throw MediaFailure("tiktok_access",
+                    "TikTok n’a pas fourni les photos de cette publication. Ouvrez le lien dans un navigateur sans compte connecté pour vérifier qu’elle est publique, puis réessayez.")
             } catch (error: Exception) {
                 task.checkActive()
                 // Do not regress existing video extraction if the public page is blocked.
                 // An explicit photo URL must never silently turn into a soundtrack/video.
                 if ("/photo/" in url || "/photo/" in source) throw error
+                photoFailure = error
                 if (!direct) source = url
             }
         }
@@ -424,7 +430,15 @@ class MediaBridge(
             addOption("--dump-single-json")
             addOption("--skip-download")
         }
-        val response = YoutubeDL.execute(request, task.processId, false, null)
+        val response = try {
+            YoutubeDL.execute(request, task.processId, false, null)
+        } catch (error: Exception) {
+            // yt-dlp cannot read a TikTok photo post at all, so its "Unsupported
+            // URL" says nothing about why the public page could not be read.
+            // Surface the page failure instead: it names the real blocker.
+            val blind = "unsupported url" in error.message.orEmpty().lowercase()
+            throw if (blind) photoFailure ?: error else error
+        }
         task.checkActive()
         val catalog = MediaCatalog.parse(response.out)
         cache(url, catalog)
