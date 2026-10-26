@@ -190,20 +190,6 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
           ],
         ),
         const SizedBox(height: 24),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: Text('Format sélectionné : ${selected.format.label}'),
-            subtitle: Text(
-              preview.isPhotoAlbum
-                  ? '${preview.photoCount} photo(s) enregistrée(s) séparément, dans l’ordre. Format fourni par TikTok (JPEG, PNG ou WebP).'
-                  : selected.sizeLabel.isEmpty
-                  ? 'Taille inconnue avant la réception du fichier.'
-                  : 'Taille estimée : ${selected.sizeLabel}',
-            ),
-          ),
-        ),
-        const SizedBox(height: 18),
         _TransferStatus(state: state),
         FilledButton.icon(
           onPressed: state.isBusy
@@ -219,15 +205,6 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
                 ? 'Télécharger les ${preview.photoCount} photos'
                 : 'Télécharger',
           ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Destination : Downloads/DAZDOWNLOADER. '
-          'Gardez l’application ouverte jusqu’à la fin du téléchargement.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          textAlign: TextAlign.center,
         ),
       ],
     );

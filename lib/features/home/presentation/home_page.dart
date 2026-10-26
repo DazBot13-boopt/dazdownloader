@@ -91,7 +91,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final horizontalPadding = constraints.maxWidth >= 720 ? 40.0 : 20.0;
-            final columns = constraints.maxWidth >= 720 ? 4 : 2;
+            final columns = constraints.maxWidth >= 720 ? 6 : 4;
 
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
@@ -156,9 +156,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                         itemCount: MediaPlatform.values.length,
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: columns,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: columns == 2 ? 2.4 : 3.2,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 1,
                         ),
                         itemBuilder: (context, index) {
                           final platform = MediaPlatform.values[index];
@@ -366,36 +366,36 @@ class _PlatformCard extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF11151D) : Colors.white,
-        borderRadius: BorderRadius.circular(100),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDark
               ? scheme.outlineVariant.withAlpha(55)
               : scheme.outlineVariant.withAlpha(60),
         ),
       ),
-      child: Material(
-        color: Colors.transparent,
-        shape: const StadiumBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
-          child: Row(
-            children: [
-              FaIcon(_icon, color: _color(isDark), size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  platform.label,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.visible,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FaIcon(_icon, color: _color(isDark), size: 20),
+            const SizedBox(height: 6),
+            // Flexible keeps the tile free of overflow stripes on the
+            // narrowest phones, where a square cell leaves very little room.
+            Flexible(
+              child: Text(
+                platform.label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
