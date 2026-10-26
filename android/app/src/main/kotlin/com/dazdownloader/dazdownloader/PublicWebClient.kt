@@ -11,7 +11,7 @@ class PublicWebClient(private val task: MediaTask) {
     data class Page(val url: String, val html: String)
 
     fun page(url: String): Page {
-        val connection = connect(url, ::allowedPageUrl)
+        val connection = connect(url, ::allowedPageUrl, PAGE_ACCEPT)
         try {
             val output = ByteArrayOutputStream()
             read(connection, output, 4L * 1024 * 1024)
@@ -20,7 +20,7 @@ class PublicWebClient(private val task: MediaTask) {
     }
 
     fun image(url: String, destination: File): Long {
-        val connection = connect(url, ::allowedImageUrl)
+        val connection = connect(url, ::allowedImageUrl, IMAGE_ACCEPT)
         try {
             if (connection.contentType?.substringBefore(';')?.lowercase() !in setOf(
                     "image/jpeg", "image/png", "image/webp", "application/octet-stream")) {
@@ -31,7 +31,7 @@ class PublicWebClient(private val task: MediaTask) {
         } finally { connection.disconnect() }
     }
 
-    private fun connect(initial: String, allowed: (String) -> Boolean): HttpURLConnection {
+    private fun connect(initial: String, allowed: (String) -> Boolean, accept: String): HttpURLConnection {
         var url = initial
         repeat(6) {
             task.checkActive()
@@ -42,6 +42,8 @@ class PublicWebClient(private val task: MediaTask) {
                 connection.connectTimeout = 15_000
                 connection.readTimeout = 15_000
                 connection.setRequestProperty("User-Agent", USER_AGENT)
+                connection.setRequestProperty("Accept", accept)
+                connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
                 connection.setRequestProperty("Referer", "https://www.tiktok.com/")
                 val code = connection.responseCode
                 task.checkActive()
@@ -80,7 +82,15 @@ class PublicWebClient(private val task: MediaTask) {
     }
 
     companion object {
-        const val USER_AGENT = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+        // TikTok only server-renders a post's data for desktop browsers. A
+        // mobile user agent is answered with a lighter shell carrying no post
+        // data, so every photo link fell through to yt-dlp — which has no
+        // TikTok photo support and could only answer "Unsupported URL".
+        const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        // AVIF is deliberately left out: the saved file must stay one of the
+        // three formats the album validator and MediaStore publication accept.
+        private const val IMAGE_ACCEPT = "image/webp,image/jpeg,image/png,*/*;q=0.8"
+        private const val PAGE_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         private fun allowed(url: String, domains: Set<String>): Boolean = runCatching {
             val uri = URI(url)
             val host = uri.host.orEmpty().lowercase()

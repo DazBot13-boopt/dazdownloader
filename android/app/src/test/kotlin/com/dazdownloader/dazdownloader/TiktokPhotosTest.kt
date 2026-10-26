@@ -90,6 +90,15 @@ class TiktokPhotosTest {
         assertNull(TiktokPhotos.canonical("<html><body>Hello</body></html>"))
     }
 
+    @Test fun theTiktokPageIsRequestedAsADesktopBrowser() {
+        // TikTok server-renders post data for desktop clients only. A mobile
+        // user agent returns a shell with no data, which is what sent photo
+        // links to yt-dlp and surfaced "Unsupported URL" to the user.
+        assertFalse(PublicWebClient.USER_AGENT.contains("Mobile"))
+        assertFalse(PublicWebClient.USER_AGENT.contains("Android"))
+        assertTrue(PublicWebClient.USER_AGENT.contains("Windows NT"))
+    }
+
     @Test fun cdnValidationRejectsCredentialsLocalHostsAndDomainLookalikes() {
         for (url in listOf("http://p16.tiktokcdn.com/a", "https://tiktokcdn.com.evil.test/a",
             "https://eviltiktokcdn.com/a", "https://user:pw@p16.tiktokcdn.com/a",
