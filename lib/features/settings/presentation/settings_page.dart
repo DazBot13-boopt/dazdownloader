@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/settings/theme_mode_controller.dart';
+import '../../../core/widgets/brand_mark.dart';
 
 const _devPortfolioUrl = 'https://togbedji-daziano.vercel.app/';
 const _privacyPolicyUrl = 'https://loady-site.vercel.app/#confidentialite';
@@ -176,7 +177,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.info_outline),
+                  leading: const BrandMark(size: 30),
                   title: const Text('Loady'),
                   subtitle: Text(
                     appVersion.when(
@@ -188,14 +189,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.privacy_tip_outlined),
+                  leading: const Icon(Icons.shield_outlined),
                   title: const Text('Politique de confidentialité'),
                   trailing: const Icon(Icons.open_in_new, size: 18),
                   onTap: _openPrivacyPolicy,
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.code_rounded),
+                  leading: const Icon(Icons.work_outline_rounded),
                   title: const Text('Contacter les dev'),
                   subtitle: const Text(
                     'Voir le portfolio et proposer un projet.',

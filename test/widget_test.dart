@@ -36,6 +36,23 @@ void main() {
     expect(find.text('Plateformes prises en charge'), findsOneWidget);
   });
 
+  testWidgets('the platform grid fits the narrowest phones', (tester) async {
+    // The compact tiles are square, so a 320pt-wide screen leaves very little
+    // room for a name like "Instagram". Overflow stripes must never appear.
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const ProviderScope(child: DazDownloaderApp()));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    // A SingleChildScrollView lays its whole child out, so every tile is
+    // measured even below the fold — which is where an overflow would show.
+    for (final platform in MediaPlatform.values) {
+      expect(find.text(platform.label), findsOneWidget);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('analysis remains available while navigating between tabs', (
     tester,
   ) async {
