@@ -142,22 +142,6 @@ void main() {
   );
 
   test(
-    'photo transfer does not complete before all saved files are returned',
-    () async {
-      engine.preview = testAlbum;
-      await controller.resolve(testAlbum.sourceUrl.toString());
-      final operation = controller.download(testPhotoFormat);
-      engine.emit(percent: 100);
-      expect(state().result, isNull);
-      engine.downloadCompleter!.complete(testAlbumDownload);
-      await operation;
-      expect(state().result!.files.length, 2);
-      await controller.openResult(testPhotos[1]);
-      expect(engine.openedFile, same(testPhotos[1]));
-    },
-  );
-
-  test(
     'failed Instagram retry retains update verification and diagnostic',
     () async {
       engine.resolutionError = const MediaEngineException(

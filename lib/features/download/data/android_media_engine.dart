@@ -80,18 +80,6 @@ class AndroidMediaEngine implements MediaEngine {
         throw _invalidResponse;
       }
       final seconds = (data['duration'] as num?)?.toDouble();
-      final count = (data['photoCount'] as num?)?.toInt() ?? 0;
-      final photos = formats.any(
-        (format) => format.format == MediaFormat.photos,
-      );
-      if (count < 0 ||
-          count > 100 ||
-          photos != (count > 0) ||
-          (photos &&
-              (formats.length != 1 ||
-                  MediaUrlParser.platformFor(url) != MediaPlatform.tiktok))) {
-        throw _invalidResponse;
-      }
       return MediaPreview(
         sourceUrl: url,
         title: data['title'] as String,
@@ -104,7 +92,6 @@ class AndroidMediaEngine implements MediaEngine {
         ),
         formats: formats,
         thumbnailUrl: data['thumbnail'] as String?,
-        photoCount: count,
         engineVersion: data['engineVersion'] as String?,
       );
     } on MediaEngineException {
@@ -127,31 +114,7 @@ class AndroidMediaEngine implements MediaEngine {
     });
     try {
       if (data == null) throw _invalidResponse;
-      final primary = _file(data);
-      if (!preview.isPhotoAlbum) return primary;
-      final files = (data['files'] as List)
-          .map((file) => _file(file as Map))
-          .toList(growable: false);
-      if (files.length != preview.photoCount ||
-          files.map((file) => file.uri).toSet().length != files.length ||
-          files.any(
-            (file) => !{
-              'image/jpeg',
-              'image/png',
-              'image/webp',
-            }.contains(file.mimeType),
-          ) ||
-          files.fold<int>(0, (sum, file) => sum + file.sizeBytes) !=
-              primary.sizeBytes) {
-        throw _invalidResponse;
-      }
-      return DownloadedMedia(
-        uri: primary.uri,
-        name: primary.name,
-        mimeType: primary.mimeType,
-        sizeBytes: primary.sizeBytes,
-        files: files,
-      );
+      return _file(data);
     } catch (_) {
       throw _invalidResponse;
     }

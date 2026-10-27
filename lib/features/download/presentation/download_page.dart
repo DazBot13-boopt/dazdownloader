@@ -152,7 +152,7 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
         ),
         const SizedBox(height: 6),
         Text(
-          '${preview.platform.label} · ${preview.author} · ${preview.isPhotoAlbum ? '${preview.photoCount} photo(s)' : _formatDuration(preview.duration)}',
+          '${preview.platform.label} · ${preview.author} · ${_formatDuration(preview.duration)}',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -165,9 +165,7 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
         ),
         const SizedBox(height: 26),
         Text(
-          preview.isPhotoAlbum
-              ? 'Télécharger le carrousel'
-              : 'Choisir la qualité',
+          'Choisir la qualité',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w800,
           ),
@@ -199,11 +197,7 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
                     .download(selected),
           icon: const Icon(Icons.download),
           label: Text(
-            state.result != null
-                ? 'Télécharger à nouveau'
-                : preview.isPhotoAlbum
-                ? 'Télécharger les ${preview.photoCount} photos'
-                : 'Télécharger',
+            state.result != null ? 'Télécharger à nouveau' : 'Télécharger',
           ),
         ),
       ],
@@ -228,10 +222,7 @@ class _TransferStatus extends ConsumerWidget {
     final label = switch (state.status) {
       DownloadStatus.resolving => 'Analyse du lien et des formats disponibles…',
       DownloadStatus.updating => 'Redémarrage du moteur…',
-      DownloadStatus.downloading =>
-        state.preview?.isPhotoAlbum == true
-            ? 'Téléchargement des photos…'
-            : 'Téléchargement du flux…',
+      DownloadStatus.downloading => 'Téléchargement du flux…',
       DownloadStatus.processing => 'Assemblage ou conversion du média…',
       DownloadStatus.saving => 'Enregistrement dans Downloads…',
       DownloadStatus.cancelling => 'Annulation en cours…',
@@ -262,7 +253,7 @@ class _TransferStatus extends ConsumerWidget {
             ),
             if (percent != null)
               Text(
-                '${percent.toStringAsFixed(0)} % ${state.preview?.isPhotoAlbum == true ? 'des photos reçues' : 'du flux'}'
+                '${percent.toStringAsFixed(0)} % du flux'
                 '${eta != null && eta > 0 ? ' · environ ${eta}s restantes' : ''}',
               ),
             if (state.status != DownloadStatus.updating)
@@ -316,31 +307,7 @@ class _TransferStatus extends ConsumerWidget {
               '· Downloads/DAZDOWNLOADER',
             ),
             const SizedBox(height: 8),
-            if (result.files.isNotEmpty)
-              Text('${result.files.length} photo(s) enregistrée(s)'),
-            if (result.files.isNotEmpty)
-              for (var index = 0; index < result.files.length; index++)
-                ListTile(
-                  title: Text('Photo ${index + 1}'),
-                  subtitle: Text(result.files[index].name),
-                  trailing: IconButton(
-                    tooltip: 'Ouvrir la photo ${index + 1}',
-                    icon: const Icon(Icons.image_outlined),
-                    onPressed: () async {
-                      try {
-                        await controller.openResult(result.files[index]);
-                      } catch (error) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(error.toString())),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ),
-            if (result.files.isEmpty)
-              FilledButton.tonalIcon(
+            FilledButton.tonalIcon(
                 onPressed: () async {
                   try {
                     await controller.openResult();
