@@ -7,7 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/settings/theme_mode_controller.dart';
 import '../../../core/widgets/brand_mark.dart';
 
-const _devPortfolioUrl = 'https://togbedji-daziano.vercel.app/';
+// Every About link points at the Loady site. Anchors for now: the site is
+// a single page, and a /path would 404 until it gains real pages.
+const _teamUrl = 'https://loady-site.vercel.app/#equipe';
 const _privacyPolicyUrl = 'https://loady-site.vercel.app/#confidentialite';
 
 final _appVersionProvider = FutureProvider<String>((ref) async {
@@ -92,8 +94,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  Future<void> _openDevPortfolio(BuildContext context) async {
-    final uri = Uri.parse(_devPortfolioUrl);
+  Future<void> _openTeamPage(BuildContext context) async {
+    final uri = Uri.parse(_teamUrl);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -197,12 +199,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.work_outline_rounded),
-                  title: const Text('Contacter les dev'),
+                  title: const Text('L’équipe Loady'),
                   subtitle: const Text(
-                    'Voir le portfolio et proposer un projet.',
+                    'Découvrir qui développe l’application.',
                   ),
                   trailing: const Icon(Icons.open_in_new, size: 18),
-                  onTap: () => _openDevPortfolio(context),
+                  onTap: () => _openTeamPage(context),
                 ),
               ],
             ),

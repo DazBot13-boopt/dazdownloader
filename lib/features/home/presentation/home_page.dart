@@ -51,13 +51,20 @@ class _HomePageState extends ConsumerState<HomePage> {
     final rawUrl = _urlController.text.trim();
     final uri = MediaUrlParser.parse(rawUrl);
     if (uri == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Collez un lien YouTube, TikTok, Instagram, Snapchat, X, Facebook, Pinterest ou Threads.',
+      // Replace the visible notification instead of queueing another one:
+      // tapping the button repeatedly used to stack identical messages.
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              rawUrl.isEmpty
+                  ? 'Collez d’abord un lien à analyser.'
+                  : 'Lien non reconnu. Utilisez un lien YouTube, TikTok, '
+                        'Instagram, Snapchat, X, Facebook, Pinterest ou Threads.',
+            ),
           ),
-        ),
-      );
+        );
       return;
     }
 
@@ -168,7 +175,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       const SizedBox(height: 34),
                       _SectionTitle(
                         title: 'Derniers téléchargements',
-                        subtitle: 'Les trois fichiers les plus récents.',
+                        subtitle: 'Les fichiers les plus récents.',
                       ),
                       const SizedBox(height: 14),
                       if (_historyLoading)
@@ -346,7 +353,7 @@ class _PlatformCard extends StatelessWidget {
 
   Color _color(bool isDark) => switch (platform) {
     MediaPlatform.youtube => const Color(0xFFFF375F),
-    MediaPlatform.tiktok => const Color(0xFF00C7BE),
+    MediaPlatform.tiktok => isDark ? Colors.white : const Color(0xFF010101),
     MediaPlatform.instagram => const Color(0xFFE1306C),
     MediaPlatform.snapchat => const Color(0xFFFFCC00),
     MediaPlatform.x => const Color(0xFF71717A),
@@ -375,11 +382,13 @@ class _PlatformCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            FaIcon(_icon, color: _color(isDark), size: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              platform == MediaPlatform.tiktok
+                  ? _TiktokMark(size: 20, isDark: isDark)
+                  : FaIcon(_icon, color: _color(isDark), size: 20),
             const SizedBox(height: 6),
             // Flexible keeps the tile free of overflow stripes on the
             // narrowest phones, where a square cell leaves very little room.
@@ -397,6 +406,54 @@ class _PlatformCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// TikTok's mark is not one colour: the glyph is echoed in cyan and magenta
+/// behind a solid copy. Stacking three icons reproduces it at any size,
+/// without shipping a bitmap that would need its own dark-theme variant.
+class _TiktokMark extends StatelessWidget {
+  const _TiktokMark({required this.size, required this.isDark});
+
+  final double size;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final shift = size * .085;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        // The echoes sit just outside the box; clipping them would cut the
+        // very effect they create.
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Transform.translate(
+            offset: Offset(-shift, -shift),
+            child: FaIcon(
+              FontAwesomeIcons.tiktok,
+              size: size,
+              color: const Color(0xFF25F4EE),
+            ),
+          ),
+          Transform.translate(
+            offset: Offset(shift, shift),
+            child: FaIcon(
+              FontAwesomeIcons.tiktok,
+              size: size,
+              color: const Color(0xFFFE2C55),
+            ),
+          ),
+          FaIcon(
+            FontAwesomeIcons.tiktok,
+            size: size,
+            color: isDark ? Colors.white : const Color(0xFF010101),
+          ),
+        ],
       ),
     );
   }
