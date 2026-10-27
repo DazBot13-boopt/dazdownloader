@@ -128,17 +128,33 @@ class _HistoryPageState extends State<HistoryPage> {
       appBar: AppBar(
         title: const Text('Historique'),
         actions: [
-          if (_items.isNotEmpty)
-            IconButton(
-              onPressed: _deleteAll,
-              icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: 'Tout supprimer',
-            ),
           IconButton(
             onPressed: _load,
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualiser',
           ),
+          // Two bare icons side by side gave no way to tell them apart, and
+          // the destructive one sat next to a harmless refresh. The menu
+          // spells out what it does before it is tapped.
+          if (_items.isNotEmpty)
+            PopupMenuButton<String>(
+              tooltip: 'Plus d’options',
+              onSelected: (value) {
+                if (value == 'delete-all') _deleteAll();
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem<String>(
+                  value: 'delete-all',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_sweep_outlined),
+                      SizedBox(width: 12),
+                      Text('Supprimer tout l’historique'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
       body: _loading
