@@ -388,57 +388,17 @@ class MediaBridge(
     }
 
     private fun resolve(url: String, task: MediaTask): Map<String, Any?> {
-        var source = url
-        var photoFailure: Exception? = null
-        if (TiktokPhotos.isTiktok(source)) {
-            val client = PublicWebClient(task)
-            val direct = TiktokPhotos.postId(source) != null
-            try {
-                var page = client.page(TiktokPhotos.pageUrl(source))
-                // Short links like vm.tiktok.com/<slug> and tiktok.com/t/<slug>
-                // sometimes stop at a landing page that only resolves via JS.
-                // Pick the canonical URL out of its own HTML and re-fetch.
-                if (TiktokPhotos.postId(page.url) == null) {
-                    val canonical = TiktokPhotos.canonical(page.html)
-                    if (canonical != null) page = client.page(TiktokPhotos.pageUrl(canonical))
-                }
-                if (TiktokPhotos.postId(page.url) != null && page.url != TiktokPhotos.pageUrl(page.url)) {
-                    page = client.page(TiktokPhotos.pageUrl(page.url))
-                }
-                source = TiktokPhotos.pageUrl(page.url)
-                val album = TiktokPhotos.parse(page.html, source)
-                if (album != null) {
-                    val catalog = album.catalog()
-                    cache(url, catalog)
-                    return catalog.toMap()
-                }
-                // TikTok only mints /photo/ links for image posts, so reaching
-                // the page without an image set means it withheld the media.
-                if ("/photo/" in url) throw MediaFailure("tiktok_access",
-                    "TikTok n’a pas fourni les photos de cette publication. Ouvrez le lien dans un navigateur sans compte connecté pour vérifier qu’elle est publique, puis réessayez.")
-            } catch (error: Exception) {
-                task.checkActive()
-                // Do not regress existing video extraction if the public page is blocked.
-                // An explicit photo URL must never silently turn into a soundtrack/video.
-                if ("/photo/" in url || "/photo/" in source) throw error
-                photoFailure = error
-                if (!direct) source = url
-            }
-        }
+        // Loady downloads videos. TikTok mints /photo/ links only for image
+        // carousels, and yt-dlp can answer nothing but "Unsupported URL" for
+        // them, which tells the user nothing about why.
+        if (MediaUrls.isTiktokPhotoPost(url)) throw MediaFailure("tiktok_photo_post",
+            "Cette publication TikTok est un carrousel de photos. Loady télécharge les vidéos.")
         runtime.ensure(task)
-        val request = request(source).apply {
+        val request = request(url).apply {
             addOption("--dump-single-json")
             addOption("--skip-download")
         }
-        val response = try {
-            YoutubeDL.execute(request, task.processId, false, null)
-        } catch (error: Exception) {
-            // yt-dlp cannot read a TikTok photo post at all, so its "Unsupported
-            // URL" says nothing about why the public page could not be read.
-            // Surface the page failure instead: it names the real blocker.
-            val blind = "unsupported url" in error.message.orEmpty().lowercase()
-            throw if (blind) photoFailure ?: error else error
-        }
+        val response = YoutubeDL.execute(request, task.processId, false, null)
         task.checkActive()
         val catalog = MediaCatalog.parse(response.out)
         cache(url, catalog)
@@ -472,16 +432,6 @@ class MediaBridge(
         var failure: Exception? = null
         try {
             task.checkActive()
-            if (catalog.photos != null) {
-                val result = PhotoDownloader(activity.applicationContext).download(catalog.photos, directory, task) { phase, percent ->
-                    emit(task, phase, percent)
-                }
-                @Suppress("UNCHECKED_CAST")
-                (result["files"] as List<Map<String, Any>>).forEach {
-                    savedUris[it["uri"] as String] = it["mimeType"] as String
-                }
-                return result
-            }
             runtime.ensure(task)
             FFmpeg.init(activity.applicationContext)
             val request = request(url).apply {

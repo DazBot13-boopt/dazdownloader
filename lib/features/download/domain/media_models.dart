@@ -13,14 +13,13 @@ extension MediaPlatformDetails on MediaPlatform {
   };
 }
 
-enum MediaFormat { mp4, webm, mp3, photos }
+enum MediaFormat { mp4, webm, mp3 }
 
 extension MediaFormatDetails on MediaFormat {
   String get label => switch (this) {
     MediaFormat.mp4 => 'MP4',
     MediaFormat.webm => 'WebM',
     MediaFormat.mp3 => 'MP3',
-    MediaFormat.photos => 'Photos',
   };
 }
 
@@ -48,9 +47,7 @@ class MediaFormatOption {
   final int? height;
   final int? sizeBytes;
 
-  String get qualityLabel => format == MediaFormat.photos
-      ? 'Toutes les images'
-      : format == MediaFormat.mp3
+  String get qualityLabel => format == MediaFormat.mp3
       ? 'Audio'
       : height == null
       ? 'Original'
@@ -75,7 +72,6 @@ class MediaPreview {
     required this.duration,
     required this.formats,
     this.thumbnailUrl,
-    this.photoCount = 0,
     this.engineVersion,
   });
 
@@ -86,9 +82,7 @@ class MediaPreview {
   final Duration duration;
   final List<MediaFormatOption> formats;
   final String? thumbnailUrl;
-  final int photoCount;
   final String? engineVersion;
-  bool get isPhotoAlbum => photoCount > 0;
 }
 
 enum MediaTransferPhase { downloading, processing, saving }
@@ -113,14 +107,10 @@ class DownloadedMedia {
     required this.name,
     required this.mimeType,
     required this.sizeBytes,
-    this.files = const [],
   });
 
   final Uri uri;
   final String name;
   final String mimeType;
   final int sizeBytes;
-
-  /// Nonempty for a photo album. Each entry is an individually published file.
-  final List<DownloadedMedia> files;
 }

@@ -15,9 +15,9 @@ Loady · Télécharger vidéos
 
 ### Description courte (max 80 caractères)
 ```
-Télécharge vidéos et photos YouTube, TikTok, Insta, X, FB — en local, sans compte.
+Télécharge les vidéos YouTube, TikTok, Insta, X, FB — en local, sans compte.
 ```
-(80/80 pile)
+(76/80 — reste 4 chars de marge)
 
 ### Description longue (max 4000 caractères)
 ```
@@ -29,7 +29,7 @@ Colle un lien, choisis la qualité, télécharge. Tout se passe sur ton téléph
 PLATEFORMES PRISES EN CHARGE
 ━━━━━━━━━━━━━━━━━━━━
 • YouTube — vidéos, Shorts
-• TikTok — vidéos et photos (y compris les liens courts vm.tiktok.com)
+• TikTok — vidéos (y compris les liens courts vm.tiktok.com)
 • Instagram — Reels, posts
 • Snapchat — Spotlight
 • X (Twitter) — vidéos

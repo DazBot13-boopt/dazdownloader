@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dazdownloader/features/download/data/android_media_engine.dart';
 import 'package:dazdownloader/features/download/domain/media_engine.dart';
-import 'package:dazdownloader/features/download/domain/media_models.dart';
 
 import 'support/test_media_engine.dart';
 
@@ -136,78 +135,6 @@ void main() {
       ),
     );
   });
-
-  test(
-    'decodes an actual TikTok photo count instead of a video format',
-    () async {
-      messenger.setMockMethodCallHandler(
-        channel,
-        (_) async => {
-          'title': 'Photos',
-          'author': 'Test',
-          'photoCount': 2,
-          'formats': [
-            {'id': 'photos-all', 'extension': 'photos'},
-          ],
-        },
-      );
-      final preview = await engine.resolve(
-        testAlbum.sourceUrl,
-        taskId: 'album',
-      );
-      expect(preview.photoCount, 2);
-      expect(preview.formats.single.format, MediaFormat.photos);
-    },
-  );
-
-  Map<String, Object> photoResult(int index) => {
-    'uri': 'content://media/external/downloads/${100 + index}',
-    'name': 'photo-$index.jpg',
-    'mimeType': 'image/jpeg',
-    'sizeBytes': 1024,
-  };
-
-  test('album success requires every distinct image to be published', () async {
-    messenger.setMockMethodCallHandler(
-      channel,
-      (_) async => {
-        ...photoResult(0),
-        'sizeBytes': 2048,
-        'files': [photoResult(0), photoResult(1)],
-      },
-    );
-    final result = await engine.download(
-      testAlbum,
-      testPhotoFormat,
-      taskId: 'album',
-    );
-    expect(result.files.length, 2);
-    expect(result.sizeBytes, 2048);
-  });
-
-  for (final badFiles in [
-    [photoResult(0)],
-    [photoResult(0), photoResult(0)],
-    [
-      photoResult(0),
-      {...photoResult(1), 'mimeType': 'video/mp4'},
-    ],
-    [
-      photoResult(0),
-      {...photoResult(1), 'uri': 'file:///tmp/partial.jpg'},
-    ],
-  ]) {
-    test('rejects an incomplete or invalid album $badFiles', () async {
-      messenger.setMockMethodCallHandler(
-        channel,
-        (_) async => {...photoResult(0), 'sizeBytes': 2048, 'files': badFiles},
-      );
-      await expectLater(
-        engine.download(testAlbum, testPhotoFormat, taskId: 'album'),
-        throwsA(isA<MediaEngineException>()),
-      );
-    });
-  }
 
   test('update requires an actual executable version', () async {
     messenger.setMockMethodCallHandler(

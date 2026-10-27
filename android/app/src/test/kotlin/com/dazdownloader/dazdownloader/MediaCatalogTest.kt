@@ -133,6 +133,21 @@ class MediaCatalogTest {
         }
     }
 
+    @Test fun tiktokPhotoLinksAreRefusedBeforeTheEngineStarts() {
+        // Loady downloads videos. TikTok mints /photo/ only for carousels, and
+        // yt-dlp answers nothing but "Unsupported URL" for them.
+        for (url in listOf("https://www.tiktok.com/@a/photo/123",
+            "https://tiktok.com/@a/photo/123?lang=fr",
+            "https://m.tiktok.com/@a/photo/123")) {
+            assertTrue(url, MediaUrls.isTiktokPhotoPost(url))
+        }
+        for (url in listOf("https://www.tiktok.com/@a/video/123",
+            "https://vm.tiktok.com/abc", "https://www.youtube.com/watch?v=photo",
+            "https://photo.example.com/@a/photo/1", "not a url")) {
+            assertFalse(url, MediaUrls.isTiktokPhotoPost(url))
+        }
+    }
+
     @Test fun cancellationCannotOverrideAnAlreadyPublishedFile() {
         val task = MediaTask("external-id;not-a-process-id")
         assertTrue(task.processId.matches(Regex("[0-9a-f-]+")))

@@ -30,12 +30,10 @@ data class MediaCatalog(
     val duration: Double?,
     val thumbnail: String?,
     val formats: List<NativeFormat>,
-    val photos: PhotoAlbum? = null,
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "title" to title, "author" to author, "duration" to duration,
         "thumbnail" to thumbnail, "formats" to formats.map { it.toMap() },
-        "photoCount" to (photos?.images?.size ?: 0),
     )
 
     companion object {
@@ -141,6 +139,18 @@ object MediaUrls {
         "snapchat.com", "x.com", "twitter.com", "facebook.com", "fb.com",
         "pinterest.com", "pinterest.fr", "threads.net", "threads.com")
     private val shortDomains = setOf("youtu.be", "fb.watch", "www.tiktokv.com", "pin.it")
+
+    /**
+     * TikTok mints /photo/ links only for image carousels. Loady downloads
+     * videos, so such a link is refused with its own reason instead of
+     * reaching an engine that can only call it unsupported.
+     */
+    fun isTiktokPhotoPost(value: String): Boolean = runCatching {
+        val uri = URI(value)
+        val host = uri.host?.lowercase()?.trimEnd('.').orEmpty()
+        (host == "tiktok.com" || host.endsWith(".tiktok.com")) &&
+            uri.path.orEmpty().contains("/photo/")
+    }.getOrDefault(false)
 
     fun validate(value: String): String {
         val uri = runCatching { URI(value) }.getOrNull()

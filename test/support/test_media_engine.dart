@@ -22,36 +22,6 @@ final testDownload = DownloadedMedia(
   mimeType: 'video/mp4',
   sizeBytes: 4096,
 );
-const testPhotoFormat = MediaFormatOption(
-  id: 'photos-all',
-  format: MediaFormat.photos,
-);
-final testAlbum = MediaPreview(
-  sourceUrl: Uri.parse('https://www.tiktok.com/@test/photo/123456'),
-  title: 'Album de test',
-  author: 'Auteur',
-  platform: MediaPlatform.tiktok,
-  duration: Duration.zero,
-  formats: const [testPhotoFormat],
-  photoCount: 2,
-);
-final testPhotos = List.generate(
-  2,
-  (index) => DownloadedMedia(
-    uri: Uri.parse('content://media/external/downloads/${100 + index}'),
-    name: 'photo-${index + 1}.jpg',
-    mimeType: 'image/jpeg',
-    sizeBytes: 1024,
-  ),
-);
-final testAlbumDownload = DownloadedMedia(
-  uri: testPhotos.first.uri,
-  name: 'Album de test',
-  mimeType: 'image/jpeg',
-  sizeBytes: 2048,
-  files: testPhotos,
-);
-
 /// Explicitly a test double. Production always uses the native Android bridge.
 class TestMediaEngine implements MediaEngine {
   final events = StreamController<MediaProgress>.broadcast(sync: true);

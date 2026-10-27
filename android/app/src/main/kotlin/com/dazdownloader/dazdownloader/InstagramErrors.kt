@@ -12,7 +12,7 @@ object InstagramErrors {
                 "registered users", "authentication"
             ).any { it in text } ->
                 MediaFailure("instagram_login", "Instagram demande une connexion ou refuse l’accès anonyme. Vérifiez que ce lien s’ouvre dans un navigateur sans compte. L’app n’importe pas votre connexion Instagram.")
-            "no video" in text -> MediaFailure("instagram_no_video", "Cette publication Instagram ne contient pas de vidéo accessible. Les photos sont prises en charge pour TikTok uniquement.")
+            "no video" in text -> MediaFailure("instagram_no_video", "Cette publication Instagram ne contient pas de vidéo accessible. Loady télécharge les vidéos.")
             "unsupported url" in text -> MediaFailure("instagram_url", "Utilisez le lien direct du Reel ou de la publication Instagram, pas un profil ni un lien de partage /share/.")
             else -> MediaFailure("instagram_extraction", "Instagram n’a pas fourni de vidéo exploitable. Copiez le diagnostic ci-dessous et transmettez-le avec le lien de la publication pour identifier le blocage.")
         }

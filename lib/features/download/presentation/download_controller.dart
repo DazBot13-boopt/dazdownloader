@@ -353,8 +353,8 @@ class DownloadController extends Notifier<DownloadState> {
     );
   }
 
-  Future<void> openResult([DownloadedMedia? file]) async {
-    final result = file ?? state.result;
+  Future<void> openResult() async {
+    final result = state.result;
     if (result != null) await _engine.open(result);
   }
 
