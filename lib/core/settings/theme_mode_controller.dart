@@ -3,31 +3,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final themeModeProvider = NotifierProvider<ThemeModeController, ThemeMode>(
-  () => ThemeModeController(ThemeMode.light),
+  () => ThemeModeController(ThemeMode.system),
 );
 
 class ThemeModeController extends Notifier<ThemeMode> {
   ThemeModeController(this.initialMode);
 
   final ThemeMode initialMode;
-  static const _darkModeKey = 'loady.theme.dark_mode';
+  static const _modeKey = 'loady.theme.mode';
+
+  /// Installations from before the three-way choice stored a plain boolean.
+  static const _legacyDarkModeKey = 'loady.theme.dark_mode';
 
   static Future<ThemeMode> loadInitialMode() async {
     try {
-      final dark = await SharedPreferencesAsync().getBool(_darkModeKey);
-      return dark == true ? ThemeMode.dark : ThemeMode.light;
+      final preferences = SharedPreferencesAsync();
+      final stored = await preferences.getString(_modeKey);
+      for (final mode in ThemeMode.values) {
+        if (mode.name == stored) return mode;
+      }
+      // Someone who already picked a side keeps it. Only an installation that
+      // never chose follows the system, which is what the old subtitle
+      // promised without ever doing it.
+      final legacy = await preferences.getBool(_legacyDarkModeKey);
+      if (legacy == null) return ThemeMode.system;
+      return legacy ? ThemeMode.dark : ThemeMode.light;
     } catch (_) {
-      return ThemeMode.light;
+      return ThemeMode.system;
     }
   }
 
   @override
   ThemeMode build() => initialMode;
 
-  Future<void> setDarkMode(bool enabled) async {
-    state = enabled ? ThemeMode.dark : ThemeMode.light;
+  Future<void> setMode(ThemeMode mode) async {
+    state = mode;
     try {
-      await SharedPreferencesAsync().setBool(_darkModeKey, enabled);
+      await SharedPreferencesAsync().setString(_modeKey, mode.name);
     } catch (_) {
       // Keep the current session usable if preferences cannot be written.
     }

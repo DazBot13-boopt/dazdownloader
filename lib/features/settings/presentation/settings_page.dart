@@ -119,8 +119,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    ref.watch(themeModeProvider);
-    final isDark = theme.brightness == Brightness.dark;
+    final themeMode = ref.watch(themeModeProvider);
     final appVersion = ref.watch(_appVersionProvider);
 
     return Scaffold(
@@ -138,16 +137,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           Card(
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.palette_outlined),
-                  title: const Text('Mode sombre'),
-                  subtitle: const Text(
-                    'Adapter l’interface à votre environnement.',
-                  ),
-                  trailing: Switch(
-                    value: isDark,
-                    onChanged: (value) =>
-                        ref.read(themeModeProvider.notifier).setDarkMode(value),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.palette_outlined),
+                          const SizedBox(width: 16),
+                          Text('Thème', style: theme.textTheme.titleMedium),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // A switch could only say on or off. "Système" is the
+                      // choice the old subtitle described and the app never
+                      // offered.
+                      SegmentedButton<ThemeMode>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(
+                            value: ThemeMode.light,
+                            label: Text('Clair'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.dark,
+                            label: Text('Sombre'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.system,
+                            label: Text('Système'),
+                          ),
+                        ],
+                        selected: {themeMode},
+                        onSelectionChanged: (selection) => ref
+                            .read(themeModeProvider.notifier)
+                            .setMode(selection.first),
+                      ),
+                    ],
                   ),
                 ),
                 const Divider(height: 1),
