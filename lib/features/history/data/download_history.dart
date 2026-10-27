@@ -23,7 +23,7 @@ class DownloadHistory {
   IconData iconFor(String mime) {
     if (mime.startsWith('video/')) return Icons.movie_outlined;
     if (mime.startsWith('audio/')) return Icons.music_note_outlined;
-    return Icons.image_outlined;
+    return Icons.insert_drive_file_outlined;
   }
 }
 

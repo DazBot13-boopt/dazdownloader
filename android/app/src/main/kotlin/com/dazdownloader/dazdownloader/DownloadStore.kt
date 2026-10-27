@@ -54,10 +54,6 @@ object MediaFiles {
             "webm" -> header.take(4).map { it.toInt() and 255 } == listOf(0x1a, 0x45, 0xdf, 0xa3)
             "mp3" -> String(header, 0, 3, Charsets.US_ASCII) == "ID3" ||
                 ((header[0].toInt() and 255) == 255 && (header[1].toInt() and 0xe0) == 0xe0)
-            "jpg" -> count >= 3 && header.take(3).map { it.toInt() and 255 } == listOf(255, 216, 255)
-            "png" -> count >= 8 && header.take(8).map { it.toInt() and 255 } == listOf(137, 80, 78, 71, 13, 10, 26, 10)
-            "webp" -> count >= 12 && String(header, 0, 4, Charsets.US_ASCII) == "RIFF" &&
-                String(header, 8, 4, Charsets.US_ASCII) == "WEBP"
             else -> false
         }
         if (!valid) throw MediaFailure("invalid_file",
@@ -69,22 +65,20 @@ class DownloadStore(private val context: Context) {
     data class Input(val file: File, val extension: String, val mime: String)
 
     fun save(file: File, title: String, format: NativeFormat, task: MediaTask): Map<String, Any> {
-        return saveAll(listOf(Input(file, format.extension, format.mimeType)), title, task).single()
-    }
-
-    fun saveAll(files: List<Input>, title: String, task: MediaTask): List<Map<String, Any>> {
-        files.forEach { MediaFiles.validate(it.file, it.extension) }
-        return MediaBatch.save(task, files.mapIndexed { index, input -> {
-            val number = if (files.size == 1) "" else "-${(index + 1).toString().padStart(3, '0')}"
-            val name = "${MediaFiles.safeTitle(title)}-${task.processId.take(8)}$number.${input.extension}"
+        val input = Input(file, format.extension, format.mimeType)
+        MediaFiles.validate(input.file, input.extension)
+        // One file per transfer. MediaBatch still owns the commit/rollback
+        // boundary, so a cancellation never leaves a half-published file.
+        return MediaBatch.save(task, listOf {
+            val name = "${MediaFiles.safeTitle(title)}-${task.processId.take(8)}.${input.extension}"
             val selectedTree = context.getSharedPreferences("download_location", Context.MODE_PRIVATE)
                 .getString("tree_uri", null)
             if (selectedTree != null) {
                 stageSelectedTree(input.file, name, input.mime, task, selectedTree)
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 stageMediaStore(input.file, name, input.mime, task)
-            } else stageLegacy(input.file, name, input.mime, task, index)
-        } })
+            } else stageLegacy(input.file, name, input.mime, task, 0)
+        }).single()
     }
 
     private fun stageSelectedTree(file: File, name: String, mime: String, task: MediaTask, rawTreeUri: String): PendingMedia {

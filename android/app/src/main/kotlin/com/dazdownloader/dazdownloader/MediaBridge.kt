@@ -311,9 +311,6 @@ class MediaBridge(
         "mp4" -> "video/mp4"
         "webm" -> "video/webm"
         "mp3" -> "audio/mpeg"
-        "jpg", "jpeg" -> "image/jpeg"
-        "png" -> "image/png"
-        "webp" -> "image/webp"
         else -> "application/octet-stream"
     }
 
@@ -590,7 +587,7 @@ class MediaBridge(
         private const val PICK_DOWNLOAD_LOCATION = 4202
         private const val LOCATION_PREFS = "download_location"
         private const val LOCATION_URI = "tree_uri"
-        private val LOADY_FILE_NAME = Regex(".+-[0-9a-fA-F]{8}(?:-\\d{3})?\\.(?:mp4|webm|mp3|jpg|png|webp)")
+        private val LOADY_FILE_NAME = Regex(".+-[0-9a-fA-F]{8}\\.(?:mp4|webm|mp3)")
         private const val MAX_NETWORK_ATTEMPTS = 3
         private const val RETRY_DELAY_MILLIS = 5_000L
     }
