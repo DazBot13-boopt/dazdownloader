@@ -84,38 +84,71 @@ jobs:
             exit 1
           fi
 
+      # A release tag must name the version it ships, otherwise the site and
+      # the in-app update check would announce the wrong number.
+      - name: Check tag matches pubspec version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
+          NAME=${VERSION%%+*}
+          if [ "${GITHUB_REF_NAME}" != "v${NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match pubspec version ${VERSION} (expected v${NAME})."
+            exit 1
+          fi
+
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build slim arm64 release APK
-        run: flutter build apk --release --split-per-abi --target-platform android-arm64
+      # arm64 for recent phones, armeabi-v7a for 32-bit ones.
+      - name: Build release APKs (arm64 + armeabi-v7a)
+        run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
 
-      - name: Rename artifact with version
+      - name: Rename artifacts with version
         id: rename
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
-          mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "dist/loady-${VERSION}-arm64.apk"
+          NAME=${VERSION%%+*}
+          BUILD=${VERSION##*+}
+          OUT=build/app/outputs/flutter-apk
+          mkdir -p dist release
+          cp "$OUT/app-arm64-v8a-release.apk" "dist/loady-${VERSION}-arm64.apk"
+          cp "$OUT/app-armeabi-v7a-release.apk" "dist/loady-${VERSION}-armv7.apk"
+          # Stable names for the release: the site links to
+          # releases/latest/download/app-arm64-v8a-release.apk.
+          cp "$OUT/app-arm64-v8a-release.apk" "$OUT/app-armeabi-v7a-release.apk" release/
+          printf '{"version":"%s","build":%s}\n' "$NAME" "$BUILD" > release/version.json
+          (cd release && sha256sum app-*.apk > SHA256SUMS.txt)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "apk_path=dist/loady-${VERSION}-arm64.apk" >> "$GITHUB_OUTPUT"
-          ls -lh dist/
+          ls -lh dist/ release/
 
       - name: Verify APK signature matches the restored keystore
         run: |
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
-          "$APKSIGNER" verify --print-certs "${{ steps.rename.outputs.apk_path }}" \
-            | grep -E "certificate SHA-256|certificate DN" || true
+          for apk in dist/*.apk; do
+            echo "$apk"
+            "$APKSIGNER" verify --print-certs "$apk" \
+              | grep -E "certificate SHA-256|certificate DN" || true
+          done
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: loady-apk-${{ steps.rename.outputs.version }}
-          path: ${{ steps.rename.outputs.apk_path }}
+          path: dist/*.apk
           if-no-files-found: error
 
-      - name: Attach APK to release (only on tag push)
+      # An official (not pre-release) release becomes "latest", which is what
+      # the site's download button and the in-app update check read.
+      - name: Publish release (only on tag push)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.rename.outputs.apk_path }}
+          files: |
+            release/app-arm64-v8a-release.apk
+            release/app-armeabi-v7a-release.apk
+            release/SHA256SUMS.txt
+            release/version.json
+          prerelease: false
+          make_latest: true
           generate_release_notes: true
