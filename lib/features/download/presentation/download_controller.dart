@@ -282,6 +282,13 @@ class DownloadController extends Notifier<DownloadState> {
     }
   }
 
+  /// Whether [format] of the current preview is already among the downloads.
+  Future<bool> isAlreadyDownloaded(MediaFormatOption format) async {
+    final preview = state.preview;
+    if (preview == null) return false;
+    return _engine.alreadyDownloaded(preview, format);
+  }
+
   Future<void> cancel() async {
     final task = _activeTask;
     if (task == null || state.status == DownloadStatus.cancelling) return;

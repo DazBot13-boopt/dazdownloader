@@ -37,6 +37,7 @@ class TestMediaEngine implements MediaEngine {
   MediaPreview preview = testPreview;
   DownloadedMedia? openedFile;
   TransferSnapshot? persistedTransfer;
+  bool existingDownload = false;
 
   @override
   Stream<MediaProgress> get progress => events.stream;
@@ -88,6 +89,12 @@ class TestMediaEngine implements MediaEngine {
 
   @override
   Future<TransferSnapshot?> lastTransfer() async => persistedTransfer;
+
+  @override
+  Future<bool> alreadyDownloaded(
+    MediaPreview preview,
+    MediaFormatOption format,
+  ) async => existingDownload;
 
   void emit({
     double percent = 50,

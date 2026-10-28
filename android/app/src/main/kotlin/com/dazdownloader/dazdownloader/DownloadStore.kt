@@ -44,6 +44,15 @@ object MediaFiles {
         .replace(Regex("[\\p{Cntrl}/\\\\:*?\"<>|]"), "_")
         .trim().trim('.').take(80).ifBlank { "video" }
 
+    /**
+     * True when [name] is a file Loady saved for a video titled [title]:
+     * "<safe title>-<8 hex>.<extension>", the name DownloadStore gives it.
+     */
+    fun isDownloadOf(name: String, title: String, extension: String): Boolean =
+        extension.isNotEmpty() &&
+            Regex(Regex.escape(safeTitle(title)) + "-[0-9a-fA-F]{8}\\." + Regex.escape(extension))
+                .matches(name)
+
     fun validate(file: File, extension: String) {
         if (!file.isFile || file.length() < 4) throw MediaFailure("invalid_file",
             "Le moteur n’a pas produit de fichier lisible.")

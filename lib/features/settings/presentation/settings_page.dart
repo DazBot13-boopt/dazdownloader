@@ -201,23 +201,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       // offered.
                       SegmentedButton<ThemeMode>(
                         showSelectedIcon: false,
-                        // Equal segments across the whole card width.
+                        // Equal segments across the whole card width, with
+                        // tighter padding so "Système" fits beside its icon.
                         expandedInsets: EdgeInsets.zero,
+                        style: SegmentedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          iconSize: 18,
+                          visualDensity: VisualDensity.compact,
+                        ),
                         segments: const [
                           ButtonSegment(
                             value: ThemeMode.light,
                             icon: Icon(Icons.light_mode_outlined),
-                            label: Text('Clair'),
+                            label: _SegmentLabel('Clair'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.dark,
                             icon: Icon(Icons.dark_mode_outlined),
-                            label: Text('Sombre'),
+                            label: _SegmentLabel('Sombre'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.system,
                             icon: Icon(Icons.brightness_auto_outlined),
-                            label: Text('Système'),
+                            label: _SegmentLabel('Système'),
                           ),
                         ],
                         selected: {themeMode},
@@ -303,4 +309,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ),
     );
   }
+}
+
+/// One line only: on a narrow phone or with a large system font the label
+/// shrinks slightly instead of wrapping its last letter onto a second line.
+class _SegmentLabel extends StatelessWidget {
+  const _SegmentLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1, softWrap: false),
+  );
 }
