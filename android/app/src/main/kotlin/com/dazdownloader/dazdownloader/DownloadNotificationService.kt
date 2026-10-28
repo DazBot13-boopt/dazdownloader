@@ -34,9 +34,11 @@ class DownloadNotificationService : Service() {
                 stopSelf()
             }
         }
-        // Redeliver the start intent if Android reclaims the process while a
-        // user-visible foreground transfer is still active.
-        return START_REDELIVER_INTENT
+        // The transfer itself runs in MediaBridge, not here. If Android kills
+        // the process, a restarted service would only show "Téléchargement en
+        // cours…" for a download that no longer exists. TransferJournal reports
+        // the interruption on the next launch instead.
+        return START_NOT_STICKY
     }
 
     private fun notification(text: String, percent: Int?, ongoing: Boolean, autoCancel: Boolean = false): Notification {

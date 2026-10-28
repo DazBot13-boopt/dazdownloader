@@ -13,6 +13,13 @@ extension MediaPlatformDetails on MediaPlatform {
   };
 }
 
+/// "YouTube, TikTok, … ou Threads": built from the enum so every message
+/// stays in sync when a platform is added.
+String get supportedPlatformsLabel {
+  final labels = [for (final platform in MediaPlatform.values) platform.label];
+  return '${labels.sublist(0, labels.length - 1).join(', ')} ou ${labels.last}';
+}
+
 enum MediaFormat { mp4, webm, mp3 }
 
 extension MediaFormatDetails on MediaFormat {
@@ -107,10 +114,15 @@ class DownloadedMedia {
     required this.name,
     required this.mimeType,
     required this.sizeBytes,
+    this.folder,
   });
 
   final Uri uri;
   final String name;
   final String mimeType;
   final int sizeBytes;
+
+  /// Where the file was saved, as shown to the user. Unknown for a transfer
+  /// restored from the native journal.
+  final String? folder;
 }

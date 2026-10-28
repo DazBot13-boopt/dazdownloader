@@ -1,6 +1,20 @@
 package com.dazdownloader.dazdownloader
 
 import android.content.Context
+import android.os.Process
+
+/**
+ * A transfer only runs inside the process that started it. When the journal
+ * still says "in progress" but that process is gone, Android killed the app
+ * mid-download: the transfer is over and must be reported as interrupted.
+ */
+internal object TransferInterruption {
+    private val activeStates = setOf("downloading", "processing", "saving", "retrying")
+    const val MESSAGE = "Le téléchargement a été interrompu car Loady a été fermé. Relancez-le."
+
+    fun isInterrupted(state: String?, startedInPid: Int, currentPid: Int): Boolean =
+        state in activeStates && startedInPid != currentPid
+}
 
 /** Stores only public, user-visible transfer state for the next app launch. */
 class TransferJournal(context: Context) {
@@ -17,6 +31,10 @@ class TransferJournal(context: Context) {
 
     fun snapshot(): Map<String, Any?>? {
         val id = preferences.getString(ID, null) ?: return null
+        if (TransferInterruption.isInterrupted(
+                preferences.getString(STATE, null), preferences.getInt(PID, -1), Process.myPid())) {
+            fail(id, TransferInterruption.MESSAGE)
+        }
         return mapOf(
             "taskId" to id,
             "url" to preferences.getString(URL, null),
@@ -35,6 +53,7 @@ class TransferJournal(context: Context) {
             .putString(URL, url)
             .putString(STATE, state)
             .putString(MESSAGE, message)
+            .putInt(PID, Process.myPid())
             .apply {
                 if (result == null) {
                     remove(URI)
@@ -60,5 +79,6 @@ class TransferJournal(context: Context) {
         const val NAME = "name"
         const val MIME = "mime"
         const val SIZE = "size"
+        const val PID = "pid"
     }
 }

@@ -185,11 +185,13 @@ class AndroidMediaEngine implements MediaEngine {
         mime.isEmpty) {
       throw _invalidResponse;
     }
+    final folder = data['folder'];
     return DownloadedMedia(
       uri: uri,
       name: name,
       mimeType: mime,
       sizeBytes: size,
+      folder: folder is String && folder.isNotEmpty ? folder : null,
     );
   }
 

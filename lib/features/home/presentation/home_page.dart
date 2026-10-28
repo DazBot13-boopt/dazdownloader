@@ -88,8 +88,8 @@ class _HomePageState extends ConsumerState<HomePage> {
             content: Text(
               rawUrl.isEmpty
                   ? 'Collez d’abord un lien à analyser.'
-                  : 'Lien non reconnu. Utilisez un lien YouTube, TikTok, '
-                        'Instagram, Snapchat, X, Facebook, Pinterest ou Threads.',
+                  : 'Lien non reconnu. Utilisez un lien '
+                        '$supportedPlatformsLabel.',
             ),
           ),
         );
