@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/update/update_checker.dart';
 import '../../../core/widgets/brand_mark.dart';
 import '../../download/domain/media_models.dart';
 import '../../download/domain/media_url_parser.dart';
@@ -22,12 +24,38 @@ class _HomePageState extends ConsumerState<HomePage> {
   final _history = DownloadHistory();
   List<DownloadHistoryItem> _recentDownloads = const [];
   bool _historyLoading = true;
+  String? _availableUpdate;
 
   @override
   void initState() {
     super.initState();
     _urlController = TextEditingController();
     _loadRecentDownloads();
+    _checkForUpdate();
+  }
+
+  Future<void> _checkForUpdate() async {
+    final result = await ref.read(updateCheckerProvider).check();
+    if (mounted && result.outcome == UpdateCheckOutcome.available) {
+      setState(() => _availableUpdate = result.version);
+    }
+  }
+
+  Future<void> _openDownloadPage() async {
+    final launched = await launchUrl(
+      Uri.parse(loadyDownloadPageUrl),
+      mode: LaunchMode.externalApplication,
+    ).catchError((_) => false);
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible d’ouvrir le lien.')),
+      );
+    }
+  }
+
+  void _dismissUpdate(String version) {
+    ref.read(updateCheckerProvider).dismiss(version);
+    setState(() => _availableUpdate = null);
   }
 
   Future<void> _loadRecentDownloads() async {
@@ -114,6 +142,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _HeroHeader(theme: theme),
+                      if (_availableUpdate case final version?) ...[
+                        const SizedBox(height: 20),
+                        _UpdateCard(
+                          version: version,
+                          onDownload: _openDownloadPage,
+                          onLater: () => _dismissUpdate(version),
+                        ),
+                      ],
                       const SizedBox(height: 28),
                       Text(
                         'Garder ce que vous aimez',
@@ -266,6 +302,72 @@ class _HeroHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _UpdateCard extends StatelessWidget {
+  const _UpdateCard({
+    required this.version,
+    required this.onDownload,
+    required this.onLater,
+  });
+
+  final String version;
+  final VoidCallback onDownload;
+  final VoidCallback onLater;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 8, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.system_update_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Loady $version est disponible',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 36),
+              child: Text(
+                'Téléchargez la nouvelle version depuis le site Loady.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                children: [
+                  TextButton(onPressed: onLater, child: const Text('Plus tard')),
+                  TextButton(
+                    onPressed: onDownload,
+                    child: const Text('Télécharger'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

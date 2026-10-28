@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/settings/theme_mode_controller.dart';
+import '../../../core/update/update_checker.dart';
 import '../../../core/widgets/brand_mark.dart';
 
 // Every About link points at the Loady site. Anchors for now: the site is
@@ -28,6 +29,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   static const _channel = MethodChannel('dazdownloader/media');
   String _locationName = 'Downloads/DAZDOWNLOADER';
   bool _customLocation = false;
+  bool _checkingUpdate = false;
 
   @override
   void initState() {
@@ -112,6 +114,49 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Impossible d’ouvrir la politique.')),
+      );
+    }
+  }
+
+  Future<void> _checkForUpdate() async {
+    if (_checkingUpdate) return;
+    setState(() => _checkingUpdate = true);
+    final result = await ref.read(updateCheckerProvider).check(force: true);
+    if (!mounted) return;
+    setState(() => _checkingUpdate = false);
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    messenger.showSnackBar(
+      switch (result.outcome) {
+        UpdateCheckOutcome.available => SnackBar(
+          content: Text('Loady ${result.version} est disponible.'),
+          action: SnackBarAction(
+            label: 'Télécharger',
+            onPressed: _openDownloadPage,
+          ),
+        ),
+        UpdateCheckOutcome.upToDate => const SnackBar(
+          content: Text('Loady est à jour.'),
+        ),
+        UpdateCheckOutcome.failed => const SnackBar(
+          content: Text(
+            'Vérification impossible. Vérifiez votre connexion et réessayez.',
+          ),
+        ),
+        UpdateCheckOutcome.unsupported => const SnackBar(
+          content: Text('Disponible dans l’application Android.'),
+        ),
+      },
+    );
+  }
+
+  Future<void> _openDownloadPage() async {
+    final launched = await launchUrl(
+      Uri.parse(loadyDownloadPageUrl),
+      mode: LaunchMode.externalApplication,
+    ).catchError((_) => false);
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible d’ouvrir le lien.')),
       );
     }
   }
@@ -215,6 +260,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       error: (_, _) => 'Version inconnue · Android',
                     ),
                   ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.system_update_outlined),
+                  title: const Text('Rechercher une mise à jour'),
+                  trailing: _checkingUpdate
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : null,
+                  onTap: _checkForUpdate,
                 ),
                 const Divider(height: 1),
                 ListTile(
