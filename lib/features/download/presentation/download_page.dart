@@ -192,9 +192,7 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
         FilledButton.icon(
           onPressed: state.isBusy
               ? null
-              : () => ref
-                    .read(downloadControllerProvider.notifier)
-                    .download(selected),
+              : () => _download(selected, again: state.result != null),
           icon: const Icon(Icons.download),
           label: Text(
             state.result != null ? 'Télécharger à nouveau' : 'Télécharger',
@@ -202,6 +200,52 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
         ),
       ],
     );
+  }
+
+  /// Warns before saving a video already among the downloads in this format.
+  /// Skipped for "Télécharger à nouveau": the user just saw it finish.
+  Future<void> _download(MediaFormatOption format, {required bool again}) async {
+    final controller = ref.read(downloadControllerProvider.notifier);
+    if (!again && await controller.isAlreadyDownloaded(format)) {
+      if (!mounted || !await _confirmDownloadAgain(format)) return;
+    }
+    await controller.download(format);
+  }
+
+  Future<bool> _confirmDownloadAgain(MediaFormatOption format) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Déjà téléchargé'),
+        content: Text(
+          '« ${widget.state.preview?.title ?? 'Cette vidéo'} » est déjà dans vos téléchargements en '
+          '${format.format.label}. Le télécharger à nouveau ?',
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Annuler'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Télécharger'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 
   String _formatDuration(Duration duration) {

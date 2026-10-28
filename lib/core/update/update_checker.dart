@@ -45,7 +45,7 @@ class UpdateCheckResult {
 abstract interface class UpdateChecker {
   /// Compares the latest published release with the installed app.
   ///
-  /// Without [force], the network is asked at most once a day and a version
+  /// Without [force], the network is asked at most once an hour and a version
   /// the user dismissed is not offered again. [force] is the explicit check
   /// from the settings screen.
   Future<UpdateCheckResult> check({bool force = false});
@@ -77,7 +77,7 @@ class GitHubUpdateChecker implements UpdateChecker {
   static const _lastCheckKey = 'loady.update.last_check';
   static const _latestKey = 'loady.update.latest';
   static const _dismissedKey = 'loady.update.dismissed';
-  static const _interval = Duration(days: 1);
+  static const _interval = Duration(hours: 1);
 
   @override
   Future<UpdateCheckResult> check({bool force = false}) async {

@@ -12,6 +12,10 @@ abstract interface class MediaEngine {
   Future<void> open(DownloadedMedia media);
   Future<String> update({required String taskId});
   Future<TransferSnapshot?> lastTransfer();
+
+  /// Whether this video was already saved in this format, so the user can be
+  /// warned before downloading it again.
+  Future<bool> alreadyDownloaded(MediaPreview preview, MediaFormatOption format);
 }
 
 class TransferSnapshot {

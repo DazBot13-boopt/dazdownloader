@@ -142,6 +142,24 @@ class AndroidMediaEngine implements MediaEngine {
   }
 
   @override
+  Future<bool> alreadyDownloaded(
+    MediaPreview preview,
+    MediaFormatOption format,
+  ) async {
+    try {
+      return await _invoke<bool>('alreadyDownloaded', {
+            'title': preview.title,
+            'extension': format.format.name,
+          }) ??
+          false;
+    } on MediaEngineException {
+      // Only a warning: an older engine or a failed check never blocks the
+      // download itself.
+      return false;
+    }
+  }
+
+  @override
   Future<TransferSnapshot?> lastTransfer() async {
     final data = await _invoke<Map>('transferStatus', const {});
     if (data == null) return null;

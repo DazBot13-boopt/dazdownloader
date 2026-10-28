@@ -46,6 +46,46 @@ void main() {
     },
   );
 
+  testWidgets('warns before downloading a video that is already saved', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 932));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final engine = TestMediaEngine()..existingDownload = true;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [mediaEngineProvider.overrideWithValue(engine)],
+        child: MaterialApp(
+          home: DownloadPage(url: testPreview.sourceUrl.toString()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Télécharger'), 250);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Télécharger'));
+    await tester.pumpAndSettle();
+    expect(find.text('Déjà téléchargé'), findsOneWidget);
+    await tester.tap(find.text('Annuler'));
+    await tester.pumpAndSettle();
+    expect(engine.downloadCalls, 0);
+
+    await tester.tap(find.text('Télécharger'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Télécharger'),
+      ),
+    );
+    await tester.pump();
+    expect(engine.downloadCalls, 1);
+
+    await tester.pumpWidget(const SizedBox());
+    await engine.events.close();
+  });
+
   testWidgets('a restored link is never analyzed again on its own', (
     tester,
   ) async {

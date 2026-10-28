@@ -80,6 +80,8 @@ class MediaBridge(
             "history" -> result.success(history())
             "deleteHistoryItem" -> result.success(deleteHistoryItem(call.argument<String>("uri") ?: ""))
             "deleteAllHistory" -> result.success(deleteAllHistory())
+            "alreadyDownloaded" -> result.success(alreadyDownloaded(
+                call.argument<String>("title") ?: "", call.argument<String>("extension") ?: ""))
             "getDownloadLocation" -> result.success(downloadLocation())
             "chooseDownloadLocation" -> {
                 if (activeOperation == "download") result.error("busy", "Attendez la fin du téléchargement pour changer de dossier.", null)
@@ -215,8 +217,16 @@ class MediaBridge(
         // so the history lists the default folder and the chosen one together.
         val items = defaultFolderHistory() +
             (selectedTree?.let { treeHistory(it) } ?: emptyList())
-        return items.sortedByDescending { it["dateAdded"] as Long }
+        // One file can be reached through two addresses (MediaStore and the
+        // chosen folder), typically when Download/Loady itself was chosen.
+        // Every download has a unique name suffix, so the name identifies the
+        // file: keep the first entry, the MediaStore one Loady owns.
+        return items.distinctBy { it["name"] }
+            .sortedByDescending { it["dateAdded"] as Long }
     }
+
+    private fun alreadyDownloaded(title: String, extension: String): Boolean =
+        history().any { MediaFiles.isDownloadOf(it["name"] as? String ?: "", title, extension) }
 
     private fun treeHistory(rawTree: String): List<Map<String, Any?>> = runCatching {
         val tree = DocumentFile.fromTreeUri(activity, Uri.parse(rawTree))
