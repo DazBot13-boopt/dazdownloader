@@ -75,10 +75,21 @@ class _HistoryPageState extends State<HistoryPage> {
     );
     if (confirmed != true) return;
     try {
-      await DownloadHistory.channel.invokeMethod<bool>('deleteHistoryItem', {
-        'uri': item.uri,
-      });
+      final deleted = await DownloadHistory.channel.invokeMethod<bool>(
+        'deleteHistoryItem',
+        {'uri': item.uri},
+      );
       await _load();
+      if (deleted != true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Ce fichier n’a pas pu être supprimé. Il a peut-être été déplacé '
+              'ou créé par une autre application.',
+            ),
+          ),
+        );
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -110,8 +121,23 @@ class _HistoryPageState extends State<HistoryPage> {
     );
     if (confirmed != true) return;
     try {
-      await DownloadHistory.channel.invokeMethod<int>('deleteAllHistory');
+      final total = _items.length;
+      final deleted =
+          await DownloadHistory.channel.invokeMethod<int>('deleteAllHistory') ??
+          0;
       await _load();
+      if (deleted < total && mounted) {
+        final remaining = total - deleted;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              remaining == 1
+                  ? '1 fichier n’a pas pu être supprimé.'
+                  : '$remaining fichiers n’ont pas pu être supprimés.',
+            ),
+          ),
+        );
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -170,7 +196,7 @@ class _HistoryPageState extends State<HistoryPage> {
               icon: Icons.folder_open_outlined,
               title: 'Aucun téléchargement',
               subtitle:
-                  'Les fichiers de Downloads/Loady apparaîtront ici.',
+                  'Les fichiers téléchargés par Loady apparaîtront ici.',
               onPressed: () => context.go('/'),
               buttonLabel: 'Analyser un lien',
             )

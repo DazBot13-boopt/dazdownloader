@@ -224,7 +224,7 @@ class _TransferStatus extends ConsumerWidget {
       DownloadStatus.updating => 'Redémarrage du moteur…',
       DownloadStatus.downloading => 'Téléchargement du flux…',
       DownloadStatus.processing => 'Assemblage ou conversion du média…',
-      DownloadStatus.saving => 'Enregistrement dans Downloads…',
+      DownloadStatus.saving => 'Enregistrement du fichier…',
       DownloadStatus.cancelling => 'Annulation en cours…',
       DownloadStatus.cancelled => 'Téléchargement annulé.',
       DownloadStatus.completed => 'Téléchargement terminé',
@@ -303,8 +303,8 @@ class _TransferStatus extends ConsumerWidget {
           if (state.result case final result?) ...[
             Text(result.name),
             Text(
-              '${(result.sizeBytes / (1024 * 1024)).toStringAsFixed(1)} Mo '
-              '· Downloads/Loady',
+              '${(result.sizeBytes / (1024 * 1024)).toStringAsFixed(1)} Mo'
+              '${result.folder != null ? ' · ${result.folder}' : ''}',
             ),
             const SizedBox(height: 8),
             FilledButton.tonalIcon(

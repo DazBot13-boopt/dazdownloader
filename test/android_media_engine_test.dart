@@ -81,6 +81,19 @@ void main() {
     final result = await engine.download(testPreview, testFormat, taskId: 'a');
     expect(result.uri.scheme, 'content');
     expect(result.sizeBytes, 4096);
+    expect(result.folder, isNull);
+  });
+
+  test('reports the folder the file was actually saved to', () async {
+    messenger.setMockMethodCallHandler(channel, (_) async => {
+      'uri': testDownload.uri.toString(),
+      'name': 'video.mp4',
+      'mimeType': 'video/mp4',
+      'sizeBytes': 4096,
+      'folder': 'Mes vidéos',
+    });
+    final result = await engine.download(testPreview, testFormat, taskId: 'a');
+    expect(result.folder, 'Mes vidéos');
   });
 
   for (final response in [

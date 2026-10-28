@@ -107,10 +107,15 @@ class DownloadedMedia {
     required this.name,
     required this.mimeType,
     required this.sizeBytes,
+    this.folder,
   });
 
   final Uri uri;
   final String name;
   final String mimeType;
   final int sizeBytes;
+
+  /// Where the file was saved, as shown to the user. Unknown for a transfer
+  /// restored from the native journal.
+  final String? folder;
 }

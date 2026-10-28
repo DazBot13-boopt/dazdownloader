@@ -61,6 +61,9 @@ object MediaFiles {
     }
 }
 
+/** Label of the default destination, shown when no folder was chosen. */
+const val DEFAULT_FOLDER_LABEL = "Downloads/Loady"
+
 class DownloadStore(private val context: Context) {
     data class Input(val file: File, val extension: String, val mime: String)
 
@@ -94,7 +97,7 @@ class DownloadStore(private val context: Context) {
             return object : PendingMedia {
                 private var finalDocument = partial
                 override val result: Map<String, Any>
-                    get() = mapOf("uri" to finalDocument.uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length())
+                    get() = mapOf("uri" to finalDocument.uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length(), "folder" to (tree.name ?: "Dossier choisi"))
                 override fun publish() {
                     if (!partial.renameTo(name)) throw MediaFailure("storage", "Impossible de finaliser le fichier téléchargé.")
                     finalDocument = tree.findFile(name) ?: partial
@@ -125,7 +128,7 @@ class DownloadStore(private val context: Context) {
                 file.inputStream().use { copy(it, output, task) }
             } ?: throw MediaFailure("storage", "Impossible d’écrire dans Downloads.")
             return object : PendingMedia {
-                override val result = mapOf("uri" to uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length())
+                override val result = mapOf("uri" to uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length(), "folder" to DEFAULT_FOLDER_LABEL)
                 override fun publish() {
                     val published = resolver.update(uri, ContentValues().apply {
                         put(MediaStore.Downloads.IS_PENDING, 0)
@@ -156,7 +159,7 @@ class DownloadStore(private val context: Context) {
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.downloads", destination)
             return object : PendingMedia {
                 private var published = false
-                override val result = mapOf("uri" to uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length())
+                override val result = mapOf("uri" to uri.toString(), "name" to name, "mimeType" to mime, "sizeBytes" to file.length(), "folder" to DEFAULT_FOLDER_LABEL)
                 override fun publish() {
                     if (destination.exists() || !partial.renameTo(destination)) {
                         throw MediaFailure("storage", "Impossible de finaliser le fichier téléchargé.")

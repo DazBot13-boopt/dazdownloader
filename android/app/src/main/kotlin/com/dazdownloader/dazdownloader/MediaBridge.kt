@@ -207,21 +207,30 @@ class MediaBridge(
     private fun history(): List<Map<String, Any?>> {
         val selectedTree = activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
             .getString(LOCATION_URI, null)
-        if (selectedTree != null) {
-            val tree = DocumentFile.fromTreeUri(activity, Uri.parse(selectedTree))
-                ?: return emptyList()
-            return tree.listFiles().filter { file ->
-                file.isFile && file.name?.matches(LOADY_FILE_NAME) == true
-            }.map { file ->
-                mapOf(
-                    "uri" to file.uri.toString(),
-                    "name" to (file.name ?: "Téléchargement"),
-                    "mimeType" to (file.type ?: mimeFor(file.name.orEmpty())),
-                    "sizeBytes" to file.length(),
-                    "dateAdded" to file.lastModified(),
-                )
-            }.sortedByDescending { it["dateAdded"] as Long }
+        // Files saved before or after a folder change live in different places,
+        // so the history lists the default folder and the chosen one together.
+        val items = defaultFolderHistory() +
+            (selectedTree?.let { treeHistory(it) } ?: emptyList())
+        return items.sortedByDescending { it["dateAdded"] as Long }
+    }
+
+    private fun treeHistory(rawTree: String): List<Map<String, Any?>> = runCatching {
+        val tree = DocumentFile.fromTreeUri(activity, Uri.parse(rawTree))
+            ?: return@runCatching emptyList()
+        tree.listFiles().filter { file ->
+            file.isFile && file.name?.matches(LOADY_FILE_NAME) == true
+        }.map { file ->
+            mapOf<String, Any?>(
+                "uri" to file.uri.toString(),
+                "name" to (file.name ?: "Téléchargement"),
+                "mimeType" to (file.type ?: mimeFor(file.name.orEmpty())),
+                "sizeBytes" to file.length(),
+                "dateAdded" to file.lastModified(),
+            )
         }
+    }.getOrDefault(emptyList()) // A revoked folder permission must not hide the rest.
+
+    private fun defaultFolderHistory(): List<Map<String, Any?>> {
         val resolver = activity.contentResolver
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Downloads.EXTERNAL_CONTENT_URI
@@ -273,12 +282,12 @@ class MediaBridge(
         val selectedTree = activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
             .getString(LOCATION_URI, null)
         if (selectedTree != null) {
-            val tree = DocumentFile.fromTreeUri(activity, Uri.parse(selectedTree))
-                ?: return false
-            val child = tree.listFiles().firstOrNull {
-                it.uri == uri && it.name?.matches(LOADY_FILE_NAME) == true
-            } ?: return false
-            return child.delete()
+            val child = DocumentFile.fromTreeUri(activity, Uri.parse(selectedTree))
+                ?.listFiles()?.firstOrNull {
+                    it.uri == uri && it.name?.matches(LOADY_FILE_NAME) == true
+                }
+            if (child != null) return child.delete()
+            // Not in the chosen folder: it may be an older file of Download/Loady.
         }
         val isDownloads = uri.authority == "media" &&
             (uri.path?.startsWith("/external/downloads/") == true ||
@@ -304,7 +313,8 @@ class MediaBridge(
 
     private fun deleteAllHistory(): Int {
         val uris = history().mapNotNull { it["uri"] as? String }
-        return uris.count { deleteHistoryItem(it) }
+        // One file that cannot be removed must not stop the others.
+        return uris.count { runCatching { deleteHistoryItem(it) }.getOrDefault(false) }
     }
 
     private fun mimeFor(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
@@ -325,7 +335,7 @@ class MediaBridge(
             activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
                 .edit().remove(LOCATION_URI).apply()
         }
-        return mapOf("uri" to "", "name" to "Downloads/Loady")
+        return mapOf("uri" to "", "name" to DEFAULT_FOLDER_LABEL)
     }
 
     private fun chooseDownloadLocation(result: MethodChannel.Result) {
