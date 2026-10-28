@@ -304,7 +304,7 @@ class _TransferStatus extends ConsumerWidget {
             Text(result.name),
             Text(
               '${(result.sizeBytes / (1024 * 1024)).toStringAsFixed(1)} Mo '
-              '· Downloads/DAZDOWNLOADER',
+              '· Downloads/Loady',
             ),
             const SizedBox(height: 8),
             FilledButton.tonalIcon(

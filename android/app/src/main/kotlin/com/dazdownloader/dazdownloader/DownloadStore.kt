@@ -115,7 +115,7 @@ class DownloadStore(private val context: Context) {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, name)
             put(MediaStore.Downloads.MIME_TYPE, mime)
-            put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/DAZDOWNLOADER")
+            put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/Loady")
             put(MediaStore.Downloads.IS_PENDING, 1)
         }
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
@@ -144,9 +144,9 @@ class DownloadStore(private val context: Context) {
     @Suppress("DEPRECATION")
     private fun stageLegacy(file: File, name: String, mime: String, task: MediaTask, index: Int): PendingMedia {
         val directory = File(Environment.getExternalStoragePublicDirectory(
-            Environment.DIRECTORY_DOWNLOADS), "DAZDOWNLOADER")
+            Environment.DIRECTORY_DOWNLOADS), "Loady")
         if (!directory.isDirectory && !directory.mkdirs()) {
-            throw MediaFailure("storage", "Impossible de créer le dossier Downloads/DAZDOWNLOADER.")
+            throw MediaFailure("storage", "Impossible de créer le dossier Downloads/Loady.")
         }
         val destination = File(directory, name)
         val partial = File(directory, ".${task.processId}-$index.partial")

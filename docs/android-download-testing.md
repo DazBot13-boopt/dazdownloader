@@ -52,7 +52,7 @@ Toutes les lignes sont encore **non vérifiées sur appareil**.
 - Piste audio dans la langue originale (vidéo YouTube avec doublages).
 - MP3 réellement converti, pas simplement renommé.
 - Succès affiché seulement après transfert, conversion/fusion et enregistrement.
-- Fichier non vide et ouvrable dans `Download/DAZDOWNLOADER` ou dans le dossier
+- Fichier non vide et ouvrable dans `Download/Loady` ou dans le dossier
   choisi.
 - Deux téléchargements identiques ne s'écrasent pas.
 

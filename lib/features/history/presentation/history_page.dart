@@ -170,7 +170,7 @@ class _HistoryPageState extends State<HistoryPage> {
               icon: Icons.folder_open_outlined,
               title: 'Aucun téléchargement',
               subtitle:
-                  'Les fichiers de Downloads/DAZDOWNLOADER apparaîtront ici.',
+                  'Les fichiers de Downloads/Loady apparaîtront ici.',
               onPressed: () => context.go('/'),
               buttonLabel: 'Analyser un lien',
             )

@@ -26,7 +26,7 @@ object MediaBatch {
                 try { it.rollback() } catch (_: Exception) { rollbackFailed = true }
             }
             if (rollbackFailed) throw MediaFailure("storage_partial",
-                "L’enregistrement a échoué et certains fichiers n’ont pas pu être retirés. Vérifiez Downloads/DAZDOWNLOADER avant de réessayer.")
+                "L’enregistrement a échoué et certains fichiers n’ont pas pu être retirés. Vérifiez Downloads/Loady avant de réessayer.")
                 .apply { initCause(error) }
             throw error
         }

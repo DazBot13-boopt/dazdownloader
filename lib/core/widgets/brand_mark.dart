@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Compact DAZDOWNLOADER brand symbol used in the app and empty states.
+/// Compact Loady brand symbol used in the app and empty states.
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.size = 56, this.dark = false});
 

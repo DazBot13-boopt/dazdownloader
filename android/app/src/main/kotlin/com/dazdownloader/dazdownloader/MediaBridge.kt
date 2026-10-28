@@ -241,9 +241,9 @@ class MediaBridge(
             "${MediaStore.MediaColumns.DATA} LIKE ?"
         }
         val argument = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            "${Environment.DIRECTORY_DOWNLOADS}/DAZDOWNLOADER/"
+            "${Environment.DIRECTORY_DOWNLOADS}/Loady/"
         } else {
-            "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)}/DAZDOWNLOADER/%"
+            "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)}/Loady/%"
         }
         val result = mutableListOf<Map<String, Any?>>()
         resolver.query(collection, projection, selection, arrayOf(argument),
@@ -291,9 +291,9 @@ class MediaBridge(
         val isOwned = resolver.query(uri, projection, null, null, null)?.use { cursor ->
             if (!cursor.moveToFirst()) false
             else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                cursor.getString(0)?.trimEnd('/') == "${Environment.DIRECTORY_DOWNLOADS}/DAZDOWNLOADER"
+                cursor.getString(0)?.trimEnd('/') == "${Environment.DIRECTORY_DOWNLOADS}/Loady"
             } else {
-                val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "DAZDOWNLOADER")
+                val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Loady")
                 val path = cursor.getString(0)?.let(::File)?.canonicalFile
                 path != null && path.parentFile?.canonicalFile == root.canonicalFile
             }
@@ -325,7 +325,7 @@ class MediaBridge(
             activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
                 .edit().remove(LOCATION_URI).apply()
         }
-        return mapOf("uri" to "", "name" to "Downloads/DAZDOWNLOADER")
+        return mapOf("uri" to "", "name" to "Downloads/Loady")
     }
 
     private fun chooseDownloadLocation(result: MethodChannel.Result) {
