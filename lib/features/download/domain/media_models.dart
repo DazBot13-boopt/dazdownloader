@@ -13,6 +13,13 @@ extension MediaPlatformDetails on MediaPlatform {
   };
 }
 
+/// "YouTube, TikTok, … ou Threads": built from the enum so every message
+/// stays in sync when a platform is added.
+String get supportedPlatformsLabel {
+  final labels = [for (final platform in MediaPlatform.values) platform.label];
+  return '${labels.sublist(0, labels.length - 1).join(', ')} ou ${labels.last}';
+}
+
 enum MediaFormat { mp4, webm, mp3 }
 
 extension MediaFormatDetails on MediaFormat {

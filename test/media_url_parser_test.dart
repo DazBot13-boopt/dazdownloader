@@ -62,4 +62,11 @@ void main() {
     expect(MediaUrlParser.parse('not a url'), isNull);
     expect(MediaUrlParser.parse('file:///tmp/video.mp4'), isNull);
   });
+
+  test('error messages name every supported platform', () {
+    expect(
+      supportedPlatformsLabel,
+      'YouTube, TikTok, Instagram, Snapchat, X, Facebook, Pinterest ou Threads',
+    );
+  });
 }

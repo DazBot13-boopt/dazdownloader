@@ -192,11 +192,9 @@ class DownloadController extends Notifier<DownloadState> {
     if (state.isBusy) return; // One native operation at a time.
     final uri = MediaUrlParser.parse(rawUrl);
     if (uri == null) {
-      state = const DownloadState(
+      state = DownloadState(
         status: DownloadStatus.failed,
-        error:
-            'Collez le lien d’une vidéo YouTube, TikTok, Instagram, '
-            'Snapchat, X ou Facebook.',
+        error: 'Collez le lien d’une vidéo $supportedPlatformsLabel.',
       );
       return;
     }
