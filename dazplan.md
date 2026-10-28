@@ -1,70 +1,89 @@
-# Plan de développement Loady
+# Feuille de route Loady
 
-## 1. Page d’analyse persistante — en cours
+Mise à jour : 27/10/2026, version `1.13.0+34`.
 
-- Conserver le lien collé.
-- Afficher une page dédiée à l’analyse.
-- Sauvegarder l’état localement.
-- Retrouver l’analyse après fermeture de l’application.
-- Relancer l’analyse si elle a été interrompue.
-- Conserver le résultat disponible.
+## Déjà fait
 
-Cette fonctionnalité sera la première Pull Request sur `feature/persistent-analysis`.
+| Sujet | PR |
+|---|---|
+| Analyse persistante (restauration sans relance automatique) | #7, #9, #34 |
+| Téléchargements longs : service avec notification, nouvelles tentatives réseau, espace disponible, journal du dernier transfert | `d3780f6`, #33 |
+| Firebase Analytics | #8 |
+| Firebase Cloud Messaging (sujet `all`) | #26 |
+| Build APK et AAB sur GitHub Actions, signature release | #16 à #20, #29 |
+| Pinterest et Threads | #23 |
+| Retours de test : historique sur l'accueil, suppression, dossier personnalisé, thème mémorisé, politique de confidentialité | #33 (détail dans `correction.md`) |
+| Piste audio originale au lieu d'une piste doublée | #34 |
+| Retrait des photos TikTok, vidéos uniquement | #38, #40 |
+| Thème Clair / Sombre / Système | #40 |
 
-## 2. Téléchargements longs
+Abandonné pour l'instant : **AdMob + Remote Config** (ajoutés en #27/#28, retirés
+en #31 après un crash au démarrage de `1.11.1+27`, cause non identifiée).
 
-- Service Android persistant.
-- Reprise après coupure réseau.
-- Nouvelles tentatives automatiques.
-- Fichier temporaire.
-- Reprise après fermeture de Loady.
-- Vérification de l’espace disponible.
-- Notifications : en cours, pause, reprise, terminé ou erreur.
+## Décisions à prendre en équipe
 
-## 3. Firebase Analytics
+1. **Mode de distribution**
+   - A. Google Play : impose API 36, la suppression de la mise à jour de yt-dlp à
+     la demande et une décision sur YouTube (risque de refus).
+   - B. APK direct (site Loady + Releases GitHub) : garde la mise à jour du moteur
+     et YouTube ; nécessite un mécanisme de mise à jour de l'app.
+   - C. Les deux, avec deux variantes de build.
+2. **Nom et `applicationId`** : à fixer avant toute publication publique ; il ne
+   pourra plus changer ensuite sur Google Play.
+3. **Licence** : youtubedl-android est sous GPL-3.0.
+4. **Organisation** : relecture des PR, gestion de Firebase, des secrets et des
+   clés de signature.
+5. **Monétisation** : AdMob est probablement incompatible avec le téléchargement
+   YouTube ; envisager dons ou version Premium.
 
-Mesurer anonymement les ouvertures, utilisateurs actifs, analyses lancées,
-téléchargements réussis ou échoués, modèles et versions Android.
+## Prochaines étapes
 
-## 4. Firebase Notifications
+### 1. CI
+- Workflow sur chaque PR : `flutter analyze`, `flutter test`,
+  `./gradlew :app:testDebugUnitTest`.
+- APK `armeabi-v7a` (téléphones 32 bits) en plus d'arm64.
+- Version et Release GitHub générées à partir d'un tag.
 
-- Messages comme « Bonne année ».
-- Annonces importantes.
-- Notifications programmées.
-- Possibilité de désactivation par l’utilisateur.
+### 2. Validation sur appareil
+- Remplir la matrice de `docs/android-download-testing.md` (8 plateformes,
+  Android 7–9, 10–12 et 13+).
 
-## 5. Mises à jour automatiques
+### 3. Corrections identifiées
+- Notification « Téléchargement en cours… » possiblement bloquée si Android tue
+  le processus : le téléchargement vit dans `MediaBridge`, mais le service
+  redémarre avec `START_REDELIVER_INTENT`.
+- Après un changement de dossier, l'historique n'affiche plus les fichiers de
+  l'ancien dossier.
+- Message de lien invalide dans `download_controller.dart` limité à 6
+  plateformes.
+- Textes « Downloads/DAZDOWNLOADER » / « Enregistrement dans Downloads… »
+  affichés même avec un dossier personnalisé.
+- Échec de suppression silencieux quand le fichier n'appartient pas à Loady.
+- Messages FCM reçus app ouverte non affichés.
+- Nettoyage : enum `MediaQuality` inutilisé, tutoiement/vouvoiement,
+  `description` du `pubspec.yaml`.
+- Lien « L'équipe Loady » : l'ancre `#equipe` doit exister sur le site.
 
-- Workflow GitHub Actions.
-- Compilation automatique APK/AAB.
-- Publication Google Play.
-- Mise à jour automatique des utilisateurs.
-- Firebase Remote Config pour activer certaines options sans republier.
+### 4. Renommage DAZDOWNLOADER → Loady (si validé)
+Par ordre de risque croissant, en PR séparées :
+1. Textes, commentaires, docs, package Dart (`name:` + imports des tests).
+2. Canaux `dazdownloader/...` (Dart et Kotlin dans la même PR), package Kotlin et
+   `namespace`, CI web (`--base-href`), scripts `tooling/`.
+3. Dossier `Download/DAZDOWNLOADER` : continuer à lire l'ancien dossier, sinon
+   les fichiers existants disparaissent de l'historique.
+4. `applicationId` : nouvelle app pour Android (pas de mise à jour des
+   installations existantes) et nouvelle app Firebase, secret
+   `GOOGLE_SERVICES_JSON_BASE64` à remplacer.
 
-## 6. Monétisation
+### 5. Publication
+- Selon la décision 1. Pour Google Play : `targetSdk` 36, test fermé, Data
+  Safety, politique de confidentialité alignée sur Firebase, fiche
+  `playstore/listing.md` relue.
 
-- Intégrer AdMob en mode test.
-- Garder les publicités désactivées au lancement.
-- Les activer progressivement plus tard.
-- Préparer Loady Premium sans publicité.
+### 6. Site vitrine
+- Section `#equipe`, politique de confidentialité, lien de téléchargement.
 
-## 7. Publication Play Store
-
-- Générer le fichier `.aab`.
-- Configurer la signature release.
-- Ajouter une politique de confidentialité.
-- Vérifier les licences et les règles des plateformes.
-- Publier d’abord en test fermé.
-
-## 8. Badges GitHub
-
-Créer de vraies Pull Requests testées puis fusionnées :
-
-1. Design — déjà fusionné.
-2. Analyse persistante.
-3. Téléchargements longs.
-4. Firebase Analytics.
-5. Notifications Firebase.
-
-Chaque PR utile fusionnée fera progresser **Pull Shark**. Une PR utile
-fusionnée sans review pourra aussi valider **YOLO**.
+### 7. Monétisation (plus tard)
+- Si AdMob est retenu : le réintégrer seul (identifiants de test, consentement
+  RGPD/UMP), tester le démarrage sur au moins deux téléphones, puis Remote Config
+  dans une PR distincte.

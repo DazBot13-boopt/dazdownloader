@@ -3,6 +3,12 @@
 Tout ce qu'il faut taper dans Play Console → Store listing. Les champs
 sont dans l'ordre que Google te présente.
 
+> **Mis à jour pour `1.13.0+34`** : vidéos uniquement, aucune publicité.
+> Avant dépôt, voir les points bloquants dans `README.md` (API 36, mise à
+> jour de yt-dlp à la demande, YouTube) et la décision de distribution dans
+> `dazplan.md`. Le site et l'URL de confidentialité ci-dessous sont ceux
+> utilisés par l'app (`loady-site.vercel.app`) ; à confirmer en équipe.
+
 ---
 
 ## 1. Store listing
@@ -34,8 +40,8 @@ PLATEFORMES PRISES EN CHARGE
 • Snapchat — Spotlight
 • X (Twitter) — vidéos
 • Facebook — vidéos
-• Pinterest — pins vidéo et image
-• Threads — vidéos et images
+• Pinterest — pins vidéo
+• Threads — vidéos
 
 ━━━━━━━━━━━━━━━━━━━━
 POURQUOI LOADY
@@ -47,7 +53,7 @@ POURQUOI LOADY
 ✓ Historique des téléchargements accessible, effaçable à tout moment
 ✓ Interface claire, en français, pensée pour aller vite
 ✓ Mode sombre natif
-✓ Léger (<30 Mo) et optimisé arm64
+✓ Optimisé pour les téléphones récents (arm64)
 
 ━━━━━━━━━━━━━━━━━━━━
 COMMENT ÇA MARCHE
@@ -55,12 +61,12 @@ COMMENT ÇA MARCHE
 1. Copie l'URL depuis l'app source (YouTube, TikTok…)
 2. Ouvre Loady — colle le lien, l'app détecte la plateforme
 3. Choisis la qualité
-4. Télécharge — le fichier atterrit dans ta galerie
+4. Télécharge — le fichier est enregistré dans Téléchargements (ou le dossier de ton choix)
 
 ━━━━━━━━━━━━━━━━━━━━
 RESPECT DE LA VIE PRIVÉE
 ━━━━━━━━━━━━━━━━━━━━
-Loady ne lit pas tes contacts, ne connaît pas ton numéro, ne te demande ni email ni mot de passe. Les seules données techniques envoyées sont des statistiques d'usage anonymes (via Firebase Analytics) pour corriger les bugs. Détails complets dans notre politique de confidentialité : https://togbedji-daziano.vercel.app/loady-privacy
+Loady ne lit pas tes contacts, ne connaît pas ton numéro, ne te demande ni email ni mot de passe. Les seules données techniques envoyées sont des statistiques d'usage anonymes (via Firebase Analytics) pour corriger les bugs. Détails complets dans notre politique de confidentialité : https://loady-site.vercel.app/#confidentialite
 
 ━━━━━━━━━━━━━━━━━━━━
 UTILISATION RESPONSABLE
@@ -71,7 +77,7 @@ Loady télécharge uniquement du contenu accessible publiquement. Respecte les d
 CONTACT
 ━━━━━━━━━━━━━━━━━━━━
 Un bug, une suggestion ? Écris-nous : daziano13@gmail.com
-Site : https://togbedji-daziano.vercel.app
+Site : https://loady-site.vercel.app
 ```
 (~1980 caractères — large marge pour en rajouter si tu veux)
 
@@ -81,8 +87,8 @@ Site : https://togbedji-daziano.vercel.app
 
 | Asset | Spec | Fichier prêt |
 |---|---|---|
-| App icon | 512×512 PNG 32-bit | `scratchpad/loady-icon-512.png` |
-| Feature graphic | 1024×500 PNG/JPEG, <1 Mo | `scratchpad/loady-feature-graphic.png` |
+| App icon | 512×512 PNG 32-bit | `playstore/loady-icon-512.png` |
+| Feature graphic | 1024×500 PNG/JPEG, <1 Mo | `playstore/loady-feature-graphic.png` |
 | Phone screenshots | min 2, max 8, 16:9 ou 9:16 portrait, min 320px côté court | à prendre sur ton tel |
 
 ### Captures à prendre sur ton tel (dans l'ordre pour le story-telling)
@@ -91,7 +97,7 @@ Site : https://togbedji-daziano.vercel.app
 3. **Résultat d'analyse** — après avoir collé un lien YouTube, l'écran qui liste les qualités
 4. **Téléchargement en cours** — barre de progression
 5. **Historique** — avec quelques items
-6. **Settings** — pour montrer "Contacter les dev"
+6. **Réglages** — thème Clair / Sombre / Système et lien « L'équipe Loady »
 
 Astuce : prend-les en mode sombre, c'est l'identité visuelle de l'app.
 
@@ -107,10 +113,10 @@ Astuce : prend-les en mode sombre, c'est l'identité visuelle de l'app.
 
 ## 4. Contact details
 
-- **Website** : https://togbedji-daziano.vercel.app
+- **Website** : https://loady-site.vercel.app
 - **Email** : daziano13@gmail.com
 - **Phone** : (laisser vide)
-- **Privacy policy** : https://togbedji-daziano.vercel.app/loady-privacy ← ← ← DOIT ÊTRE ICI
+- **Privacy policy** : https://loady-site.vercel.app/#confidentialite ← ← ← DOIT ÊTRE ICI
 
 ---
 
@@ -121,18 +127,18 @@ Astuce : prend-les en mode sombre, c'est l'identité visuelle de l'app.
 
 ### Data types to declare
 
-Pour chaque entrée : collected = Yes, shared = No (sauf AdMob qui partage), processed ephemerally = No, user can request deletion = Yes (via mail).
+Pour chaque entrée : collected = Yes, shared = No, processed ephemerally = No, user can request deletion = Yes (via mail).
 
 | Data type | Collected | Shared | Purpose |
 |---|---|---|---|
 | **App interactions** (events analytics) | Yes | No | Analytics |
 | **Crash logs** | Yes | No | Analytics, App functionality |
 | **Diagnostics** (perf) | Yes | No | Analytics |
-| **Device or other IDs** (Advertising ID, FCM token) | Yes | **Yes** (shared with Google AdMob) | Advertising, App functionality |
+| **Device or other IDs** (identifiant Firebase, jeton FCM) | Yes | No | Analytics, App functionality |
 | **Approximate location** (dérivée de l'IP par Firebase) | Yes | No | Analytics |
 
 ### Security practices
-- Data encrypted in transit : **Yes** (HTTPS pour toutes les requêtes Firebase + AdMob)
+- Data encrypted in transit : **Yes** (HTTPS pour toutes les requêtes Firebase)
 - Users can request data deletion : **Yes** (via email `daziano13@gmail.com`)
 - Committed to Play Families Policy : **No** (pas destinée aux enfants)
 
@@ -155,7 +161,7 @@ Google te fera remplir un questionnaire IARC. Réponses pour Loady :
 
 ## 7. Target audience and content
 
-- **Target age** : 13+ (parce qu'on envoie des pubs AdMob qui lisent l'Advertising ID, donc on ne peut pas cibler <13)
+- **Target age** : 13+ (app de téléchargement de contenus en ligne, non destinée aux enfants)
 - **Appeal to children** : No
 
 ---
@@ -166,8 +172,8 @@ Tous **No**.
 ---
 
 ## 9. Ads
-- **Does your app contain ads?** → **Yes**
-  (Loady affiche une bannière AdMob quand le kill-switch Remote Config `ads_enabled` est vrai. Même si c'est à `false` au lancement, Google exige qu'on déclare le code publicitaire présent.)
+- **Does your app contain ads?** → **No**
+  (AdMob a été retiré en PR #31. S'il est réintégré, même désactivé à distance, il faudra répondre **Yes** et mettre à jour Data Safety et Target age.)
 
 ---
 
@@ -182,12 +188,13 @@ Tous **No**.
 - [ ] Feature graphic 1024×500 uploadé
 - [ ] Au moins 2 screenshots phone uploadés
 - [ ] Titre + short desc + long desc remplis
-- [ ] Privacy policy URL = https://togbedji-daziano.vercel.app/loady-privacy
+- [ ] Privacy policy URL = https://loady-site.vercel.app/#confidentialite
 - [ ] Email contact = daziano13@gmail.com
 - [ ] Data safety validé (bouton "Submit" dans la section)
 - [ ] Content rating validé
 - [ ] Target audience validé
-- [ ] Ads declaration = Yes
+- [ ] Ads declaration = No
+- [ ] `targetSdk` = 36 (obligatoire depuis le 31/08/2026)
 - [ ] AAB uploadé dans Internal testing (lance d'abord `Build Release AAB` workflow)
 - [ ] Testeurs internes ajoutés (au moins ton propre mail Google)
 - [ ] Review Google (quelques heures à quelques jours pour Internal testing)

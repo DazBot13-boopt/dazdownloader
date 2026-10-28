@@ -1,5 +1,12 @@
 # Plan de correction des observations Loady
 
+> **Document terminé, conservé pour l'historique.** Les 10 points ont été
+> fusionnés avec la PR #33 (20/10/2026), puis complétés par #34 (analyse non
+> relancée, audio original) et #40 (thème Clair / Sombre / Système). Les
+> validations sur appareil restent à faire (voir
+> `docs/android-download-testing.md`). Les sujets ouverts sont suivis dans
+> `dazplan.md`.
+
 État initial établi à partir du code du dépôt, puis suivi de mise en œuvre.
 
 ## Avancement
