@@ -11,6 +11,19 @@ extension MediaPlatformDetails on MediaPlatform {
     MediaPlatform.pinterest => 'Pinterest',
     MediaPlatform.threads => 'Threads',
   };
+
+  /// Home page of the platform. Android opens it in the platform's app when
+  /// installed (its app links claim these addresses), otherwise in a browser.
+  Uri get homeUrl => Uri.parse(switch (this) {
+    MediaPlatform.youtube => 'https://www.youtube.com',
+    MediaPlatform.tiktok => 'https://www.tiktok.com',
+    MediaPlatform.instagram => 'https://www.instagram.com',
+    MediaPlatform.snapchat => 'https://www.snapchat.com',
+    MediaPlatform.x => 'https://x.com',
+    MediaPlatform.facebook => 'https://www.facebook.com',
+    MediaPlatform.pinterest => 'https://www.pinterest.com',
+    MediaPlatform.threads => 'https://www.threads.com',
+  });
 }
 
 /// "YouTube, TikTok, … ou Threads": built from the enum so every message

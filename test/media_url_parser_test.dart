@@ -63,6 +63,13 @@ void main() {
     expect(MediaUrlParser.parse('file:///tmp/video.mp4'), isNull);
   });
 
+  test('each platform card opens an address Loady itself recognises', () {
+    for (final platform in MediaPlatform.values) {
+      expect(platform.homeUrl.scheme, 'https');
+      expect(MediaUrlParser.platformFor(platform.homeUrl), platform);
+    }
+  });
+
   test('error messages name every supported platform', () {
     expect(
       supportedPlatformsLabel,
