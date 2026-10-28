@@ -53,6 +53,28 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  /// Opens the platform's app when it is installed, so the user can pick a
+  /// video and share or copy its link; falls back to the website.
+  Future<void> _openPlatform(MediaPlatform platform) async {
+    final url = platform.homeUrl;
+    final inApp = await launchUrl(
+      url,
+      mode: LaunchMode.externalNonBrowserApplication,
+    ).catchError((_) => false);
+    if (inApp) return;
+    final inBrowser = await launchUrl(
+      url,
+      mode: LaunchMode.externalApplication,
+    ).catchError((_) => false);
+    if (!inBrowser && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('Impossible d’ouvrir ${platform.label}.')),
+        );
+    }
+  }
+
   void _dismissUpdate(String version) {
     ref.read(updateCheckerProvider).dismiss(version);
     setState(() => _availableUpdate = null);
@@ -190,7 +212,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                       const SizedBox(height: 34),
                       _SectionTitle(
                         title: 'Plateformes prises en charge',
-                        subtitle: 'Huit univers, une même expérience.',
+                        subtitle:
+                            'Touchez une plateforme pour l’ouvrir et copier un lien.',
                       ),
                       const SizedBox(height: 14),
                       GridView.builder(
@@ -205,7 +228,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ),
                         itemBuilder: (context, index) {
                           final platform = MediaPlatform.values[index];
-                          return _PlatformCard(platform: platform);
+                          return _PlatformCard(
+                            platform: platform,
+                            onTap: () => _openPlatform(platform),
+                          );
                         },
                       ),
                       const SizedBox(height: 34),
@@ -438,9 +464,10 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _PlatformCard extends StatelessWidget {
-  const _PlatformCard({required this.platform});
+  const _PlatformCard({required this.platform, required this.onTap});
 
   final MediaPlatform platform;
+  final VoidCallback onTap;
 
   FaIconData get _icon => switch (platform) {
     MediaPlatform.youtube => FontAwesomeIcons.youtube,
@@ -472,17 +499,25 @@ class _PlatformCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
+    final radius = BorderRadius.circular(18);
+    return Semantics(
+      button: true,
+      label: 'Ouvrir ${platform.label}',
+      excludeSemantics: true,
+      child: Material(
         color: isDark ? const Color(0xFF11151D) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDark
-              ? scheme.outlineVariant.withAlpha(55)
-              : scheme.outlineVariant.withAlpha(60),
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: BorderSide(
+            color: isDark
+                ? scheme.outlineVariant.withAlpha(55)
+                : scheme.outlineVariant.withAlpha(60),
+          ),
         ),
-      ),
-      child: Padding(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -507,6 +542,8 @@ class _PlatformCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+          ),
         ),
       ),
     );
