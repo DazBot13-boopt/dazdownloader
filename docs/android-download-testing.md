@@ -1,110 +1,134 @@
-# Recette du moteur Android
+# Recette Android
 
 Statut : **à exécuter sur appareil**. Les tests automatisés ne prouvent pas
-qu'un réseau social accepte actuellement un lien.
+qu'une plateforme accepte actuellement un lien.
+
+Version visée : `1.13.0+34` ou plus récente.
 
 ## Préparation
 
-Installer l'APK adaptée, prévoir de l'espace pour les flux temporaires et le fichier
-final, puis choisir de courtes vidéos publiques dont le téléchargement est autorisé.
-Ne pas versionner d'URL privée, de cookie ou de lien signé. Garder l'app ouverte.
+Récupérer l'APK produit par le workflow GitHub Actions **Build Android APK**
+(artefact `loady-apk-<version>`). Il est **arm64 uniquement** : il ne s'installe
+pas sur un téléphone 32 bits.
+
+Prévoir de l'espace pour les flux temporaires et le fichier final, puis choisir
+de courtes vidéos publiques dont le téléchargement est autorisé. Ne pas
+versionner d'URL privée, de cookie ou de lien signé.
 
 ```bash
 adb devices
-adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+adb install -r loady-<version>-arm64-v8a.apk
 ```
 
 Si la signature de l'ancienne APK diffère, ne pas désinstaller automatiquement :
 cela effacerait les données locales. Choisir la migration avec le propriétaire.
 
-## Régression de fermeture à l'analyse — 1.0.1+2
+Pour chaque essai, noter : appareil, version Android, version APK, date,
+résultat.
 
-Un défaut du build release `1.0.0+1` a été reproduit localement après optimisation
-R8 : les constructeurs ZIP utilisés par réflexion étaient supprimés, provoquant
-une `ExceptionInInitializerError` non interceptée lors du démarrage du moteur.
-Le build `1.0.1+2` conserve ces classes et transforme les `LinkageError` en erreur
-visible, sans intercepter les erreurs fatales de la VM comme un manque de mémoire.
-La correspondance avec le crash signalé reste à confirmer sur le téléphone.
+## Matrice par plateforme
 
-Test reproductible sur la JVM, avec R8 et la dépendance réellement utilisée :
+Toutes les lignes sont encore **non vérifiées sur appareil**.
+
+| Plateforme | Aperçu réel | Vidéo enregistrée et lisible | MP3 si audio présent |
+| --- | --- | --- | --- |
+| YouTube / youtu.be / Shorts | À tester | À tester | À tester |
+| TikTok / lien court vm.tiktok.com | À tester | À tester | À tester |
+| Instagram Reel | À tester | À tester | À tester |
+| Snapchat Spotlight public | À tester | À tester | À tester |
+| X / publication vidéo | À tester | À tester | À tester |
+| Facebook / fb.watch | À tester | À tester | À tester |
+| Pinterest / pin.it (pin vidéo) | À tester | À tester | À tester |
+| Threads (publication vidéo) | À tester | À tester | À tester |
+
+À couvrir au minimum sur un Android 7–9, un Android 10–12 et un Android 13+.
+
+## Critères d'acceptation du téléchargement
+
+- Titre et durée cohérents, aucune résolution fictive.
+- MP4 téléchargé et lisible ; WebM lisible avec un lecteur compatible
+  (MP4/WebM sont des conteneurs, le lecteur doit gérer les codecs).
+- Flux séparés (DASH/HLS) : fichier final avec image **et son**.
+- Piste audio dans la langue originale (vidéo YouTube avec doublages).
+- MP3 réellement converti, pas simplement renommé.
+- Succès affiché seulement après transfert, conversion/fusion et enregistrement.
+- Fichier non vide et ouvrable dans `Download/DAZDOWNLOADER` ou dans le dossier
+  choisi.
+- Deux téléchargements identiques ne s'écrasent pas.
+
+## Erreurs et cycle de vie
+
+- Annuler pendant l'analyse, le transfert et l'enregistrement : aucun faux
+  succès, aucun fichier partiel.
+- Couper le réseau pendant un transfert : nouvelles tentatives (3 au maximum),
+  puis erreur explicite.
+- Stockage plein ; permission de stockage refusée sur Android 7–9.
+- Sur Android 10+ : aucune permission de stockage demandée.
+- Liens privés, supprimés, profils, playlists, carrousels (TikTok `/photo/`),
+  directs, format expiré : message explicite, aucun faux téléchargement.
+- Quitter l'écran puis revenir : suivi de l'opération conservé.
+- Mettre l'app en arrière-plan pendant un téléchargement : notification de
+  progression, puis notification de fin.
+- Forcer l'arrêt pendant un téléchargement : vérifier qu'aucune notification
+  « Téléchargement en cours… » ne reste bloquée, et ce qui s'affiche au
+  relancement.
+- Rouvrir l'app après une analyse interrompue : message « L'analyse a été
+  interrompue », **aucune relance automatique**.
+- Rouvrir l'app après un téléchargement terminé : le résultat s'affiche une
+  seule fois.
+- « Redémarrer le moteur et réessayer » depuis un écran d'erreur.
+- « Copier le diagnostic » : ne contient ni lien ni cookie.
+
+## Fonctions de l'app
+
+- Partager un lien depuis une autre app vers Loady : l'analyse s'ouvre.
+- Accueil : les 3 derniers téléchargements s'affichent et s'ouvrent.
+- Historique : ouvrir, supprimer un fichier, tout supprimer (avec
+  confirmation).
+- Réglages : choisir un dossier, télécharger dedans, le retrouver dans
+  l'historique, rétablir le dossier par défaut.
+- Thème Clair / Sombre / Système : choix conservé après redémarrage.
+- Liens « Politique de confidentialité » et « L'équipe Loady ».
+- Notification Firebase envoyée au sujet `all` : reçue app fermée.
+
+## Démarrage du moteur (régression 1.0.0+1)
+
+Le build release `1.0.0+1` plantait à l'analyse : R8 supprimait des classes ZIP
+utilisées pour décompresser le moteur. Les règles de
+`android/app/proguard-rules.pro` corrigent ce problème, et les erreurs de
+chargement du moteur s'affichent désormais dans l'interface.
+
+Test reproductible sur la JVM, avec R8 :
 
 ```bash
 bash tooling/check_release_zip.sh /chemin/jdk-17 /chemin/android-sdk/build-tools/36.0.0/lib/d8.jar /chemin/commons-compress-1.12.jar
 ```
 
-Ce test doit d'abord reproduire l'échec sans les règles, puis afficher
+Il doit d'abord reproduire l'échec sans les règles, puis afficher
 `ZIP runtime initialization passed after R8.` avec les règles du projet.
-Il n'exécute ni Android ni les binaires Python/FFmpeg. Après compilation, vérifier
-aussi que `build/app/outputs/mapping/release/configuration.txt` contient les deux
-règles de `android/app/proguard-rules.pro`.
 
-Sur appareil, utiliser le nouvel **APK release**, pas seulement un build debug :
+## En cas de fermeture de l'app
 
-1. Installer `1.0.1` par-dessus l'ancienne version, sans effacer ses données.
-2. Fermer puis relancer l'app ; coller une URL via le bouton ou le menu Android.
-   Le champ doit se remplir sans lancer d'analyse ni fermer l'app.
-3. Appuyer sur **Analyser le lien** (ou valider avec le clavier) : attendre un
-   aperçu ou une erreur visible, jamais une fermeture du processus.
-4. Refaire l'essai après une erreur, puis télécharger et ouvrir une courte vidéo.
-5. Vérifier également le premier démarrage sur une installation vierge dans un
-   appareil/profil de test distinct ; ne pas supprimer les données de l'utilisateur.
-
-Si l'app ferme encore, relever modèle, version Android, version APK et action
-exacte : collage, validation clavier ou bouton d'analyse. Avec un PC déjà autorisé
-pour le débogage USB, le journal de crash se consulte avec :
+Relever modèle, version Android, version APK et action exacte. Avec un PC
+autorisé pour le débogage USB :
 
 ```bash
 adb logcat -d -b crash -v threadtime AndroidRuntime:E '*:S'
 ```
 
 Ne partager que le bloc concernant `com.dazdownloader.dazdownloader`, en masquant
-les liens privés et autres données personnelles. Si l'app reste ouverte avec un
-message de démarrage du moteur, une capture du message suffit pour commencer.
+les liens privés et autres données personnelles.
 
-## Matrice de validation réelle
+Rappel : la version `1.11.1+27` (AdMob + Remote Config) se fermait au démarrage
+sans trace exploitable ; en cas de réintégration d'un plugin natif, tester le
+démarrage sur au moins deux téléphones avant de fusionner.
 
-Noter appareil, version Android, version APK, date et résultat.
-Toutes les lignes ci-dessous sont encore non vérifiées sur appareil.
+## Avant distribution
 
-| Plateforme | Aperçu réel | Vidéo enregistrée et lisible | MP3 si audio présent |
-| --- | --- | --- | --- |
-| YouTube / youtu.be | À tester | À tester | À tester |
-| TikTok / lien court | À tester | À tester | À tester |
-| Instagram Reel | À tester | À tester | À tester |
-| Snapchat Spotlight public | À tester | À tester | À tester |
-| X / publication vidéo | À tester | À tester | À tester |
-| Facebook / fb.watch | À tester | À tester | À tester |
+- Tester sur un appareil à pages mémoire de 16 Ko : compiler l'APK ne valide pas
+  à lui seul les binaires natifs embarqués.
 
-## Critères d'acceptation
+## Hors périmètre actuel
 
-- Titre et durée cohérents, aucune résolution fictive.
-- MP4 progressif téléchargé et lisible.
-- DASH/HLS à flux séparés : fichier final avec image **et son**.
-- MP3 réellement converti, pas simplement renommé.
-- Succès après transfert, conversion/fusion et enregistrement, jamais à la seule
-  réception d'une progression à 100 %.
-- Fichier non vide et ouvrable dans `Downloads/DAZDOWNLOADER`.
-- Deux téléchargements identiques ne s'écrasent pas.
-- Tester un lecteur compatible avec les codecs : MP4/WebM désignent des conteneurs.
-
-## Erreurs et cycle de vie
-
-- Annuler pendant l'analyse, le transfert et l'enregistrement : aucun faux succès.
-- Annuler au moment de la publication : si celle-ci a déjà réussi, conserver le
-  succès et le fichier.
-- Couper le réseau ; vérifier l'erreur et la possibilité de réessayer.
-- Tester stockage plein et permission refusée sur Android 7–9.
-- Sur Android 10+, aucune permission globale de stockage n'est nécessaire.
-- Liens privés, supprimés, profils, playlists, carrousels, directs, format expiré :
-  message explicite, aucun faux téléchargement.
-- Quitter l'écran puis revenir sans fermer l'app : suivi de l'opération conservé.
-- Fermer/forcer l'arrêt : aucune promesse de reprise ou d'exécution persistante.
-- Tester la mise à jour explicite de yt-dlp depuis l'écran d'erreur.
-- Tester les appareils à pages mémoire de 16 Ko avant distribution : compiler
-  l'APK ne valide pas à lui seul les binaires natifs embarqués.
-
-## Hors périmètre de ce premier moteur
-
-Téléchargements multiples, playlists/carrousels, directs, authentification,
-historique persistant, dossier personnalisé, notifications et service en
-arrière-plan, signature de production, version web.
+Téléchargements simultanés, playlists et carrousels, photos, directs en cours,
+connexion aux comptes et cookies, version web fonctionnelle.
