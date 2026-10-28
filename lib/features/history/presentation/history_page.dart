@@ -55,25 +55,60 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
-  Future<void> _delete(DownloadHistoryItem item) async {
+  /// Deleting removes the file itself, so the two choices must both look like
+  /// buttons and the destructive one must stand out: cancel on the left,
+  /// delete in the error colour on the right.
+  Future<bool> _confirmDeletion({
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer le fichier ?'),
-        content: Text('« ${item.name} » sera supprimé de l’appareil.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        final scheme = Theme.of(context).colorScheme;
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                    ),
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Annuler'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: scheme.error,
+                      foregroundColor: scheme.onError,
+                    ),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text(confirmLabel),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
-    if (confirmed != true) return;
+    return confirmed == true;
+  }
+
+  Future<void> _delete(DownloadHistoryItem item) async {
+    final confirmed = await _confirmDeletion(
+      title: 'Supprimer de l’appareil ?',
+      message: '« ${item.name} » sera supprimé de l’appareil.',
+      confirmLabel: 'Supprimer',
+    );
+    if (!confirmed) return;
     try {
       final deleted = await DownloadHistory.channel.invokeMethod<bool>(
         'deleteHistoryItem',
@@ -100,26 +135,13 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _deleteAll() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tout supprimer ?'),
-        content: const Text(
+    final confirmed = await _confirmDeletion(
+      title: 'Tout supprimer de l’appareil ?',
+      message:
           'Tous les fichiers téléchargés par Loady seront supprimés de l’appareil.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Tout supprimer'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Tout supprimer',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     try {
       final total = _items.length;
       final deleted =

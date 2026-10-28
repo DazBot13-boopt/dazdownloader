@@ -41,9 +41,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<void> _openDownloadPage() async {
+  Future<void> _downloadUpdate() async {
     final launched = await launchUrl(
-      Uri.parse(loadyDownloadPageUrl),
+      updateDownloadUri(),
       mode: LaunchMode.externalApplication,
     ).catchError((_) => false);
     if (!launched && mounted) {
@@ -146,7 +146,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         const SizedBox(height: 20),
                         _UpdateCard(
                           version: version,
-                          onDownload: _openDownloadPage,
+                          onDownload: _downloadUpdate,
                           onLater: () => _dismissUpdate(version),
                         ),
                       ],
@@ -347,7 +347,7 @@ class _UpdateCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 36),
               child: Text(
-                'Téléchargez la nouvelle version depuis le site Loady.',
+                'Touchez « Télécharger », puis ouvrez le fichier pour l’installer.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

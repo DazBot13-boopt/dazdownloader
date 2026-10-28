@@ -47,6 +47,23 @@ void main() {
     });
   });
 
+  group('apkDownloadUri', () {
+    test('points at the APK of the latest release for this architecture', () {
+      expect(
+        apkDownloadUri('arm64-v8a').toString(),
+        'https://github.com/DazBot13-boopt/dazdownloader/releases/latest/download/app-arm64-v8a-release.apk',
+      );
+      expect(
+        apkDownloadUri('armeabi-v7a').toString(),
+        endsWith('/releases/latest/download/app-armeabi-v7a-release.apk'),
+      );
+    });
+
+    test('falls back to the site when no APK exists for the phone', () {
+      expect(apkDownloadUri(null).toString(), loadyDownloadPageUrl);
+    });
+  });
+
   group('home update card', () {
     setUp(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

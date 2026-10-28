@@ -192,8 +192,12 @@ class MediaBridge(
                 if (call.method == "download") {
                     if (failure == null) {
                         @Suppress("UNCHECKED_CAST")
-                        journal.finish(task.id, value as? Map<String, Any>)
-                        DownloadNotificationService.complete(activity, "Téléchargement terminé")
+                        val saved = value as? Map<String, Any>
+                        journal.finish(task.id, saved)
+                        DownloadNotificationService.complete(activity,
+                            "Téléchargement terminé · touchez pour ouvrir",
+                            saved?.get("uri") as? String, saved?.get("mimeType") as? String,
+                            notify = closed || !MainActivity.isVisible)
                     } else {
                         if (failure?.code == "cancelled") journal.cancelled(task.id)
                         else journal.fail(task.id, failure?.message ?: "Téléchargement impossible")
