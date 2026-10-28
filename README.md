@@ -7,9 +7,9 @@ synchronisation cloud.
 Version actuelle : `1.13.0+34` (voir `pubspec.yaml`).
 
 > Le dépôt, le package et certains identifiants techniques portent encore
-> l'ancien nom **DAZDOWNLOADER** (`com.dazdownloader.dazdownloader`, dossier
-> `Download/DAZDOWNLOADER`, canaux `dazdownloader/...`). Un renommage est à
-> l'étude ; voir les risques dans [la feuille de route](dazplan.md).
+> l'ancien nom **DAZDOWNLOADER** (`com.dazdownloader.dazdownloader`, canaux
+> `dazdownloader/...`). Le dossier de téléchargement s'appelle désormais
+> `Download/Loady`. Voir [la feuille de route](dazplan.md).
 
 ## Fonctionnalités
 
@@ -62,9 +62,9 @@ se fermait au démarrage ; la cause exacte n'a pas été identifiée.
 5. **Vérification** : fichier non vide et en-tête cohérent (MP4 `ftyp`, WebM
    EBML, MP3 ID3/frame). Un transfert à 100 % n'est pas un succès en soi.
 6. **Enregistrement**, en tout ou rien (rien de partiel n'est laissé) :
-   - **Android 10+** : `MediaStore` dans `Download/DAZDOWNLOADER`, fichier masqué
+   - **Android 10+** : `MediaStore` dans `Download/Loady`, fichier masqué
      (`IS_PENDING`) jusqu'à la fin. Aucune autorisation demandée.
-   - **Android 7 à 9** : écriture directe dans `Download/DAZDOWNLOADER` avec
+   - **Android 7 à 9** : écriture directe dans `Download/Loady` avec
      l'autorisation de stockage, ouverture via un `FileProvider`.
    - **Dossier choisi par l'utilisateur** : Storage Access Framework (droit
      persistant sur ce seul dossier).

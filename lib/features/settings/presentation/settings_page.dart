@@ -27,7 +27,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   static const _channel = MethodChannel('dazdownloader/media');
-  String _locationName = 'Downloads/DAZDOWNLOADER';
+  String _locationName = 'Downloads/Loady';
   bool _customLocation = false;
   bool _checkingUpdate = false;
 
@@ -44,7 +44,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       );
       if (!mounted || location == null) return;
       setState(() {
-        _locationName = location['name'] ?? 'Downloads/DAZDOWNLOADER';
+        _locationName = location['name'] ?? 'Downloads/Loady';
         _customLocation = (location['uri'] ?? '').isNotEmpty;
       });
     } catch (_) {
@@ -80,7 +80,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       await _channel.invokeMethod<Map>('resetDownloadLocation');
       if (!mounted) return;
       setState(() {
-        _locationName = 'Downloads/DAZDOWNLOADER';
+        _locationName = 'Downloads/Loady';
         _customLocation = false;
       });
     } on PlatformException catch (error) {

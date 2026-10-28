@@ -69,8 +69,9 @@ Par ordre de risque croissant, en PR séparées :
 1. Textes, commentaires, docs, package Dart (`name:` + imports des tests).
 2. Canaux `dazdownloader/...` (Dart et Kotlin dans la même PR), package Kotlin et
    `namespace`, CI web (`--base-href`), scripts `tooling/`.
-3. Dossier `Download/DAZDOWNLOADER` : continuer à lire l'ancien dossier, sinon
-   les fichiers existants disparaissent de l'historique.
+3. ~~Dossier `Download/DAZDOWNLOADER`~~ : **fait**, renommé `Download/Loady`
+   (app pas encore en production : les fichiers de l'ancien dossier ne sont plus
+   listés dans l'historique).
 4. `applicationId` : nouvelle app pour Android (pas de mise à jour des
    installations existantes) et nouvelle app Firebase, secret
    `GOOGLE_SERVICES_JSON_BASE64` à remplacer.
