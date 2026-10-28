@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import 'in_app_message.dart';
+
 /// Topic every device subscribes to so a single Firebase Console broadcast
 /// reaches the whole fleet without maintaining a token registry.
 const _broadcastTopic = 'all';
@@ -24,11 +26,11 @@ Future<void> initMessaging() async {
     await messaging.subscribeToTopic(_broadcastTopic);
 
     // Foreground messages: Firebase does not auto-display the system
-    // notification while the app is in the foreground. For now we just
-    // print — a future PR will route this through a local-notification
-    // plugin or in-app banner.
+    // notification while the app is in the foreground, so the announcement
+    // is shown inside the app instead.
     FirebaseMessaging.onMessage.listen((message) {
-      debugPrint('FCM foreground message: ${message.messageId}');
+      final notification = message.notification;
+      showInAppMessage(title: notification?.title, body: notification?.body);
     });
 
     FirebaseMessaging.onBackgroundMessage(_backgroundHandler);

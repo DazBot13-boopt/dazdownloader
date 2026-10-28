@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/notifications/in_app_message.dart';
 import 'core/routing/app_router.dart';
 import 'core/settings/theme_mode_controller.dart';
 import 'core/theme/app_theme.dart';
@@ -15,6 +16,7 @@ class DazDownloaderApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Loady',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: appMessengerKey,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
