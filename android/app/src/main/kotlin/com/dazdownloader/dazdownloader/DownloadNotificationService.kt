@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -29,8 +30,14 @@ class DownloadNotificationService : Service() {
             ACTION_COMPLETE, ACTION_FAILED -> {
                 val text = intent.getStringExtra(EXTRA_TEXT) ?: "Téléchargement terminé"
                 stopForeground(STOP_FOREGROUND_REMOVE)
-                NotificationManagerCompat.from(this).notify(DONE_NOTIFICATION_ID,
-                    notification(text, 100, false, true))
+                // Someone looking at Loady already sees the outcome on screen.
+                if (intent.getBooleanExtra(EXTRA_NOTIFY, true)) {
+                    val file = intent.getStringExtra(EXTRA_URI)?.let { uri ->
+                        intent.getStringExtra(EXTRA_MIME)?.let { mime -> openFile(uri, mime) }
+                    }
+                    NotificationManagerCompat.from(this).notify(DONE_NOTIFICATION_ID,
+                        notification(text, null, false, true, file))
+                }
                 stopSelf()
             }
         }
@@ -41,8 +48,14 @@ class DownloadNotificationService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun notification(text: String, percent: Int?, ongoing: Boolean, autoCancel: Boolean = false): Notification {
-        val open = PendingIntent.getActivity(
+    private fun notification(
+        text: String,
+        percent: Int?,
+        ongoing: Boolean,
+        autoCancel: Boolean = false,
+        file: PendingIntent? = null,
+    ): Notification {
+        val open = file ?: PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -56,8 +69,19 @@ class DownloadNotificationService : Service() {
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
         if (percent != null && percent >= 0) builder.setProgress(100, percent.coerceIn(0, 100), false)
+        if (file != null) builder.addAction(0, "Ouvrir", file)
         return builder.build()
     }
+
+    /** Opens the saved video or audio in the user's player. */
+    private fun openFile(uri: String, mime: String): PendingIntent = PendingIntent.getActivity(
+        this, 1,
+        Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.parse(uri), mime)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -76,6 +100,9 @@ class DownloadNotificationService : Service() {
         private const val ACTION_FAILED = "failed"
         private const val EXTRA_TEXT = "text"
         private const val EXTRA_PERCENT = "percent"
+        private const val EXTRA_URI = "uri"
+        private const val EXTRA_MIME = "mime"
+        private const val EXTRA_NOTIFY = "notify"
 
         fun start(context: Context, taskId: String) {
             val intent = base(context, ACTION_START, taskId)
@@ -90,7 +117,12 @@ class DownloadNotificationService : Service() {
             context.startService(intent)
         }
 
-        fun complete(context: Context, text: String) = send(context, ACTION_COMPLETE, text)
+        fun complete(context: Context, text: String, uri: String?, mime: String?, notify: Boolean) {
+            context.startService(base(context, ACTION_COMPLETE, text)
+                .putExtra(EXTRA_URI, uri)
+                .putExtra(EXTRA_MIME, mime)
+                .putExtra(EXTRA_NOTIFY, notify))
+        }
 
         fun failed(context: Context, text: String) = send(context, ACTION_FAILED, text)
 

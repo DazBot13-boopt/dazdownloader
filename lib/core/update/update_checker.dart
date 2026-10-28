@@ -6,17 +6,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Page of the Loady site that offers the APKs. The app never installs an
-/// update itself: the user downloads it from the site, as for the first
-/// installation.
+import 'device_abi.dart';
+
+/// Page of the Loady site that offers the APKs, used when the phone's
+/// architecture has no APK of its own.
 const loadyDownloadPageUrl = 'https://loady-site.vercel.app/#telechargement';
+
+const _latestRelease =
+    'https://github.com/DazBot13-boopt/dazdownloader/releases/latest/download';
 
 /// Published with every official release by build-apk.yml. A static release
 /// asset, not the GitHub API: the API allows 60 requests per hour per IP, and
 /// mobile carriers put many users behind the same address.
-final _versionUrl = Uri.parse(
-  'https://github.com/DazBot13-boopt/dazdownloader/releases/latest/download/version.json',
-);
+final _versionUrl = Uri.parse('$_latestRelease/version.json');
+
+/// The latest APK for this phone, opened in the browser so the download starts
+/// at once. Loady never installs it itself: that would need the
+/// REQUEST_INSTALL_PACKAGES permission, which Google Play restricts.
+Uri updateDownloadUri() => apkDownloadUri(currentApkAbi());
+
+/// APK of the latest release for [abi], or the site's download section when
+/// no APK is published for it.
+Uri apkDownloadUri(String? abi) => abi == null
+    ? Uri.parse(loadyDownloadPageUrl)
+    : Uri.parse('$_latestRelease/app-$abi-release.apk');
 
 enum UpdateCheckOutcome { available, upToDate, failed, unsupported }
 

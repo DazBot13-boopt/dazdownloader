@@ -14,8 +14,9 @@ const _teamUrl = 'https://loady-site.vercel.app/#equipe';
 const _privacyPolicyUrl = 'https://loady-site.vercel.app/#confidentialite';
 
 final _appVersionProvider = FutureProvider<String>((ref) async {
-  final info = await PackageInfo.fromPlatform();
-  return '${info.version}+${info.buildNumber}';
+  // Only the version name: the build number Android reports differs per APK
+  // architecture (2037 for arm64), which means nothing to the user.
+  return (await PackageInfo.fromPlatform()).version;
 });
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -131,7 +132,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           content: Text('Loady ${result.version} est disponible.'),
           action: SnackBarAction(
             label: 'Télécharger',
-            onPressed: _openDownloadPage,
+            onPressed: _downloadUpdate,
           ),
         ),
         UpdateCheckOutcome.upToDate => const SnackBar(
@@ -149,9 +150,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Future<void> _openDownloadPage() async {
+  Future<void> _downloadUpdate() async {
     final launched = await launchUrl(
-      Uri.parse(loadyDownloadPageUrl),
+      updateDownloadUri(),
       mode: LaunchMode.externalApplication,
     ).catchError((_) => false);
     if (!launched && mounted) {
@@ -200,17 +201,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       // offered.
                       SegmentedButton<ThemeMode>(
                         showSelectedIcon: false,
+                        // Equal segments across the whole card width.
+                        expandedInsets: EdgeInsets.zero,
                         segments: const [
                           ButtonSegment(
                             value: ThemeMode.light,
+                            icon: Icon(Icons.light_mode_outlined),
                             label: Text('Clair'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.dark,
+                            icon: Icon(Icons.dark_mode_outlined),
                             label: Text('Sombre'),
                           ),
                           ButtonSegment(
                             value: ThemeMode.system,
+                            icon: Icon(Icons.brightness_auto_outlined),
                             label: Text('Système'),
                           ),
                         ],

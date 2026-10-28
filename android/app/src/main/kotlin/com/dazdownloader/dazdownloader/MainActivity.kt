@@ -45,6 +45,16 @@ class MainActivity : FlutterActivity() {
             })
     }
 
+    override fun onResume() {
+        super.onResume()
+        isVisible = true
+    }
+
+    override fun onPause() {
+        isVisible = false
+        super.onPause()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -79,5 +89,11 @@ class MainActivity : FlutterActivity() {
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
 
-    companion object { private const val NOTIFICATION_PERMISSION = 4301 }
+    companion object {
+        private const val NOTIFICATION_PERMISSION = 4301
+
+        /** True while Loady is on screen; read by the download worker thread. */
+        @Volatile var isVisible = false
+            private set
+    }
 }
