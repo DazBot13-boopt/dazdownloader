@@ -187,10 +187,24 @@ actuellement montée à la main dans les PR.
 
 ## Distribution et licences
 
-youtubedl-android est publié sous **GPL-3.0** et embarque notamment Python,
-FFmpeg et QuickJS. Avant toute distribution publique, vérifier les obligations
-de licence (licence du projet, sources, notices). Aucune licence n'est encore
-déclarée pour Loady.
+Copyright (C) 2026 Les contributeurs de Loady
+
+Loady est un logiciel libre : tu peux le redistribuer et/ou le modifier selon
+les termes de la **GNU General Public License** publiée par la Free Software
+Foundation, soit la **version 3** de la licence, soit (à ton choix) toute
+version ultérieure (`GPL-3.0-or-later`). Loady est distribué dans l'espoir qu'il
+sera utile, mais **sans aucune garantie**, sans même la garantie implicite de
+qualité marchande ou d'adéquation à un usage particulier. Le texte complet de la
+licence est dans [`LICENSE`](LICENSE).
+
+Chaque contributeur garde les droits d'auteur sur le code qu'il a écrit et
+accepte qu'il soit publié sous cette licence.
+
+Composants tiers : youtubedl-android est publié sous **GPL-3.0** et embarque
+notamment yt-dlp, Python, FFmpeg et QuickJS, chacun sous sa propre licence. Les
+icônes de marques viennent de Font Awesome (CC BY 4.0). Les SDK Firebase ne
+sont pas des logiciels libres, ce qui empêche notamment une publication sur
+F-Droid tant qu'ils sont présents.
 
 Avant une publication Google Play, points bloquants connus :
 
