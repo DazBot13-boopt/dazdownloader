@@ -140,7 +140,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         UpdateCheckOutcome.failed => const SnackBar(
           content: Text(
-            'Vérification impossible. Vérifiez votre connexion et réessayez.',
+            'Vérification impossible. Vérifie ta connexion et réessaie.',
           ),
         ),
         UpdateCheckOutcome.unsupported => const SnackBar(

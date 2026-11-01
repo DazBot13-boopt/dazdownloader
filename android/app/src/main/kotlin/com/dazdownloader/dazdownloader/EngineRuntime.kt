@@ -26,7 +26,7 @@ class EngineRuntime(private val context: Context) {
         if (EngineVersion.needsBundledVersion(current)) {
             val bytes = context.resources.openRawResource(R.raw.daz_ytdlp).use { it.readBytes() }
             val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-            if (hash != EngineVersion.SHA256) throw MediaFailure("engine_integrity", "Le moteur intégré est endommagé. Réinstallez l’APK.")
+            if (hash != EngineVersion.SHA256) throw MediaFailure("engine_integrity", "Le moteur intégré est endommagé. Réinstalle l’APK.")
             task.checkActive()
             val destination = File(File(File(context.noBackupFilesDir, YoutubeDL.baseName), YoutubeDL.ytdlpDirName), YoutubeDL.ytdlpBin)
             val atomic = AtomicFile(destination)

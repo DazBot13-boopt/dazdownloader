@@ -17,7 +17,7 @@ void main() {
       const url = 'https://www.youtube.com/watch?v=test';
       const message =
           'Le moteur Android n’a pas pu démarrer (ExceptionInInitializerError). '
-          'Envoyez une capture de ce message avec le modèle du téléphone.';
+          'Envoie une capture de ce message avec le modèle du téléphone.';
       var resolveCalls = 0;
 
       messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {

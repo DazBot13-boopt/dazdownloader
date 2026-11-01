@@ -51,7 +51,7 @@ class AndroidMediaEngine implements MediaEngine {
     } on MissingPluginException {
       throw const MediaEngineException(
         'missing_engine',
-        'Le moteur Android est absent. Réinstallez la nouvelle version de l’APK.',
+        'Le moteur Android est absent. Réinstalle la nouvelle version de l’APK.',
       );
     }
   }
@@ -233,6 +233,6 @@ class AndroidMediaEngine implements MediaEngine {
 
   static const _invalidResponse = MediaEngineException(
     'invalid_response',
-    'Le moteur n’a pas renvoyé un média valide. Réessayez l’analyse du lien.',
+    'Le moteur n’a pas renvoyé un média valide. Réessaie l’analyse du lien.',
   );
 }

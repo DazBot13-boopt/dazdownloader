@@ -157,7 +157,7 @@ class DownloadController extends Notifier<DownloadState> {
     state = DownloadState(
       status: DownloadStatus.failed,
       url: uri,
-      error: 'L’analyse a été interrompue. Relancez-la quand vous le souhaitez.',
+      error: 'L’analyse a été interrompue. Relance-la quand tu le souhaites.',
       restored: true,
     );
     await _sessionStore.clearPendingUrl();
@@ -194,7 +194,7 @@ class DownloadController extends Notifier<DownloadState> {
     if (uri == null) {
       state = DownloadState(
         status: DownloadStatus.failed,
-        error: 'Collez le lien d’une vidéo $supportedPlatformsLabel.',
+        error: 'Colle le lien d’une vidéo $supportedPlatformsLabel.',
       );
       return;
     }
@@ -383,7 +383,7 @@ class DownloadController extends Notifier<DownloadState> {
           ? null
           : error is MediaEngineException
           ? error.message
-          : 'Une erreur inattendue est survenue. Redémarrez le moteur et réessayez.',
+          : 'Une erreur inattendue est survenue. Redémarre le moteur et réessaie.',
     );
   }
 }
