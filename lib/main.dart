@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
 import 'core/analytics/analytics_service.dart';
 import 'core/notifications/messaging_init.dart';
+import 'core/settings/terms_notice_controller.dart';
 import 'core/settings/theme_mode_controller.dart';
 
 Future<void> main() async {
@@ -17,14 +18,19 @@ Future<void> main() async {
   final results = await Future.wait<Object>([
     _initAnalytics(),
     ThemeModeController.loadInitialMode(),
+    TermsNoticeController.loadAccepted(),
   ]);
   final analytics = results[0] as AnalyticsService;
   final initialThemeMode = results[1] as ThemeMode;
+  final termsAccepted = results[2] as bool;
   await analytics.logAppOpen();
   final container = ProviderContainer(
     overrides: [
       analyticsServiceProvider.overrideWithValue(analytics),
       themeModeProvider.overrideWith(() => ThemeModeController(initialThemeMode)),
+      termsNoticeProvider.overrideWith(
+        () => TermsNoticeController(termsAccepted),
+      ),
     ],
   );
   // Fire-and-forget: FCM init involves a permission prompt and network

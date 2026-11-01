@@ -4,14 +4,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/links/site_links.dart';
 import '../../../core/settings/theme_mode_controller.dart';
 import '../../../core/update/update_checker.dart';
 import '../../../core/widgets/brand_mark.dart';
-
-// Every About link points at the Loady site. Anchors for now: the site is
-// a single page, and a /path would 404 until it gains real pages.
-const _teamUrl = 'https://loady-site.vercel.app/#equipe';
-const _privacyPolicyUrl = 'https://loady-site.vercel.app/#confidentialite';
 
 final _appVersionProvider = FutureProvider<String>((ref) async {
   // Only the version name: the build number Android reports differs per APK
@@ -98,7 +94,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _openTeamPage(BuildContext context) async {
-    final uri = Uri.parse(_teamUrl);
+    final uri = Uri.parse(teamPageUrl);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,15 +103,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  Future<void> _openPrivacyPolicy() async {
+  Future<void> _openSitePage(String url, String failure) async {
     final launched = await launchUrl(
-      Uri.parse(_privacyPolicyUrl),
+      Uri.parse(url),
       mode: LaunchMode.externalApplication,
     ).catchError((_) => false);
     if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible d’ouvrir la politique.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(failure)));
     }
   }
 
@@ -290,7 +286,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   leading: const Icon(Icons.shield_outlined),
                   title: const Text('Politique de confidentialité'),
                   trailing: const Icon(Icons.open_in_new, size: 18),
-                  onTap: _openPrivacyPolicy,
+                  onTap: () => _openSitePage(
+                    privacyPolicyUrl,
+                    'Impossible d’ouvrir la politique.',
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.gavel_outlined),
+                  title: const Text('Conditions d’utilisation'),
+                  subtitle: const Text(
+                    'Droits d’auteur et bon usage de Loady.',
+                  ),
+                  trailing: const Icon(Icons.open_in_new, size: 18),
+                  onTap: () => _openSitePage(
+                    termsOfUseUrl,
+                    'Impossible d’ouvrir les conditions.',
+                  ),
                 ),
                 const Divider(height: 1),
                 ListTile(

@@ -5,6 +5,7 @@ import 'core/notifications/in_app_message.dart';
 import 'core/routing/app_router.dart';
 import 'core/settings/theme_mode_controller.dart';
 import 'core/theme/app_theme.dart';
+import 'features/legal/presentation/terms_notice.dart';
 
 class DazDownloaderApp extends ConsumerWidget {
   const DazDownloaderApp({super.key});
@@ -21,6 +22,8 @@ class DazDownloaderApp extends ConsumerWidget {
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
       routerConfig: appRouter,
+      builder: (context, child) =>
+          TermsNoticeGate(child: child ?? const SizedBox.shrink()),
     );
   }
 }
