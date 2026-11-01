@@ -54,10 +54,10 @@ data class MediaCatalog(
         fun parse(json: String): MediaCatalog {
             val data = JSONObject(json)
             if (data.has("entries") || data.optString("_type") in setOf("playlist", "multi_video")) {
-                throw MediaFailure("collection", "Ce lien contient plusieurs médias. Collez le lien d’une vidéo individuelle.")
+                throw MediaFailure("collection", "Ce lien contient plusieurs médias. Colle le lien d’une vidéo individuelle.")
             }
             if (data.optBoolean("is_live") || data.optString("live_status") in setOf("is_live", "is_upcoming")) {
-                throw MediaFailure("live", "Les directs en cours ne sont pas pris en charge. Utilisez le lien du replay terminé.")
+                throw MediaFailure("live", "Les directs en cours ne sont pas pris en charge. Utilise le lien du replay terminé.")
             }
             if (data.optBoolean("has_drm")) {
                 throw MediaFailure("drm", "Ce média est protégé et ne peut pas être téléchargé.")
@@ -158,7 +158,7 @@ object MediaUrls {
         if (uri == null || uri.scheme != "https" || uri.userInfo != null ||
             uri.port !in setOf(-1, 443) || host == null ||
             !(host in shortDomains || domains.any { host == it || host.endsWith(".$it") })) {
-            throw MediaFailure("invalid_url", "Utilisez un lien HTTPS d’une plateforme prise en charge.")
+            throw MediaFailure("invalid_url", "Utilise un lien HTTPS d’une plateforme prise en charge.")
         }
         return uri.toString()
     }

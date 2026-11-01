@@ -102,7 +102,7 @@ class _NoUrlState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Revenez à l’accueil pour coller une URL.',
+              'Reviens à l’accueil pour coller une URL.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -218,7 +218,7 @@ class _PreviewContentState extends ConsumerState<_PreviewContent> {
       builder: (context) => AlertDialog(
         title: const Text('Déjà téléchargé'),
         content: Text(
-          '« ${widget.state.preview?.title ?? 'Cette vidéo'} » est déjà dans vos téléchargements en '
+          '« ${widget.state.preview?.title ?? 'Cette vidéo'} » est déjà dans tes téléchargements en '
           '${format.format.label}. Le télécharger à nouveau ?',
         ),
         actions: [

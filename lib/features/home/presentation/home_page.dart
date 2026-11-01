@@ -109,8 +109,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           SnackBar(
             content: Text(
               rawUrl.isEmpty
-                  ? 'Collez d’abord un lien à analyser.'
-                  : 'Lien non reconnu. Utilisez un lien '
+                  ? 'Colle d’abord un lien à analyser.'
+                  : 'Lien non reconnu. Utilise un lien '
                         '$supportedPlatformsLabel.',
             ),
           ),
@@ -174,14 +174,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ],
                       const SizedBox(height: 28),
                       Text(
-                        'Garder ce que vous aimez',
+                        'Garder ce que tu aimes',
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Détectez la plateforme, choisissez une qualité et téléchargez localement.',
+                        'Détecte la plateforme, choisis une qualité et télécharge localement.',
                         style: theme.textTheme.bodyLarge?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -213,7 +213,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       _SectionTitle(
                         title: 'Plateformes prises en charge',
                         subtitle:
-                            'Touchez une plateforme pour l’ouvrir et copier un lien.',
+                            'Touche une plateforme pour l’ouvrir et copier un lien.',
                       ),
                       const SizedBox(height: 14),
                       GridView.builder(
@@ -373,7 +373,7 @@ class _UpdateCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 36),
               child: Text(
-                'Touchez « Télécharger », puis ouvrez le fichier pour l’installer.',
+                'Touche « Télécharger », puis ouvre le fichier pour l’installer.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -627,7 +627,7 @@ class _EmptyHistoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Vos fichiers enregistrés apparaîtront ici.',
+            'Tes fichiers enregistrés apparaîtront ici.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

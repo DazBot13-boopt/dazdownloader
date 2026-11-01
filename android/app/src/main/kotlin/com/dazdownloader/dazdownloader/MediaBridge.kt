@@ -84,12 +84,12 @@ class MediaBridge(
                 call.argument<String>("title") ?: "", call.argument<String>("extension") ?: ""))
             "getDownloadLocation" -> result.success(downloadLocation())
             "chooseDownloadLocation" -> {
-                if (activeOperation == "download") result.error("busy", "Attendez la fin du téléchargement pour changer de dossier.", null)
+                if (activeOperation == "download") result.error("busy", "Attends la fin du téléchargement pour changer de dossier.", null)
                 else chooseDownloadLocation(result)
             }
             "resetDownloadLocation" -> {
                 if (activeOperation == "download") {
-                    result.error("busy", "Attendez la fin du téléchargement pour changer de dossier.", null)
+                    result.error("busy", "Attends la fin du téléchargement pour changer de dossier.", null)
                     return
                 }
                 activity.getSharedPreferences(LOCATION_PREFS, Activity.MODE_PRIVATE)
@@ -99,7 +99,7 @@ class MediaBridge(
             "transferStatus" -> result.success(journal.snapshot())
             "resolve", "download", "update" -> {
                 if (active != null || permissionRequest != null) {
-                    result.error("busy", "Une opération est déjà en cours. Attendez ou annulez-la.", null)
+                    result.error("busy", "Une opération est déjà en cours. Attends ou annule-la.", null)
                     return
                 }
                 if (call.method == "download" && Build.VERSION.SDK_INT <= 28 &&
@@ -197,7 +197,7 @@ class MediaBridge(
                         val saved = value as? Map<String, Any>
                         journal.finish(task.id, saved)
                         DownloadNotificationService.complete(activity,
-                            "Téléchargement terminé · touchez pour ouvrir",
+                            "Téléchargement terminé · touche pour ouvrir",
                             saved?.get("uri") as? String, saved?.get("mimeType") as? String,
                             notify = closed || !MainActivity.isVisible)
                     } else {
@@ -433,9 +433,9 @@ class MediaBridge(
 
     private fun download(url: String, formatId: String, task: MediaTask): Map<String, Any> {
         val catalog = catalogs[url] ?: throw MediaFailure("preview_expired",
-            "L’aperçu a expiré. Analysez à nouveau le lien.")
+            "L’aperçu a expiré. Analyse à nouveau le lien.")
         val format = catalog.formats.singleOrNull { it.id == formatId }
-            ?: throw MediaFailure("invalid_format", "Ce format n’est pas disponible. Analysez à nouveau le lien.")
+            ?: throw MediaFailure("invalid_format", "Ce format n’est pas disponible. Analyse à nouveau le lien.")
         // Keep partial fragments outside the disposable cache. yt-dlp can resume
         // them after a transient network failure while the foreground service
         // keeps the process alive in the background.
@@ -551,15 +551,15 @@ class MediaBridge(
             })
             result.success(null)
         } catch (_: ActivityNotFoundException) {
-            result.error("no_player", "Installez un lecteur compatible pour ouvrir ce format.", null)
+            result.error("no_player", "Installe un lecteur compatible pour ouvrir ce format.", null)
         } catch (_: Exception) {
-            result.error("missing_file", "Impossible d’ouvrir le fichier. Vérifiez qu’il existe dans Downloads.", null)
+            result.error("missing_file", "Impossible d’ouvrir le fichier. Vérifie qu’il existe dans Downloads.", null)
         }
     }
 
     private fun friendlyError(error: Exception, task: MediaTask, url: String?): MediaFailure {
         if (error is MediaFailure && error.code == "storage_partial") return error
-        if (task.timedOut.get()) return MediaFailure("timeout", "L’analyse a pris trop de temps. Réessayez.")
+        if (task.timedOut.get()) return MediaFailure("timeout", "L’analyse a pris trop de temps. Réessaie.")
         if (task.cancelled.get() || error is YoutubeDL.CanceledException || error is InterruptedException)
             return MediaFailure("cancelled", "Téléchargement annulé.")
         if (error is MediaFailure) return error
@@ -567,16 +567,16 @@ class MediaBridge(
         val host = runCatching { java.net.URI(url.orEmpty()).host }.getOrNull().orEmpty()
         if (host == "instagram.com" || host.endsWith(".instagram.com")) return InstagramErrors.classify(message)
         return when {
-            "no space left" in message || "enospc" in message -> MediaFailure("storage_full", "Le stockage est plein. Libérez de l’espace et réessayez.")
+            "no space left" in message || "enospc" in message -> MediaFailure("storage_full", "Le stockage est plein. Libère de l’espace et réessaie.")
             error is SecurityException -> MediaFailure("permission_denied", "Android a refusé l’accès au stockage.")
             listOf("private", "sign in", "login", "log in", "cookies", "authentication").any { it in message } ->
                 MediaFailure("unavailable", "Ce contenu nécessite une connexion ou n’est pas accessible publiquement.")
-            "unsupported url" in message -> MediaFailure("unsupported_url", "Ce type de lien n’est pas pris en charge. Utilisez le lien direct de la publication vidéo.")
-            "requested format" in message -> MediaFailure("format_expired", "Le format a changé. Analysez à nouveau le lien.")
+            "unsupported url" in message -> MediaFailure("unsupported_url", "Ce type de lien n’est pas pris en charge. Utilise le lien direct de la publication vidéo.")
+            "requested format" in message -> MediaFailure("format_expired", "Le format a changé. Analyse à nouveau le lien.")
             "drm" in message -> MediaFailure("drm", "Ce média est protégé et ne peut pas être téléchargé.")
             listOf("timed out", "unable to download", "network", "resolve", "http error").any { it in message } ->
-                MediaFailure("network", "La plateforme ou le réseau a refusé la requête. Réessayez plus tard ou redémarrez le moteur.")
-            else -> MediaFailure("engine_error", "Le moteur n’a pas pu traiter ce lien. Redémarrez le moteur et réessayez.")
+                MediaFailure("network", "La plateforme ou le réseau a refusé la requête. Réessaie plus tard ou redémarre le moteur.")
+            else -> MediaFailure("engine_error", "Le moteur n’a pas pu traiter ce lien. Redémarre le moteur et réessaie.")
         }
     }
 

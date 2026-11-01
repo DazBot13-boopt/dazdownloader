@@ -28,7 +28,7 @@ class MediaTask(val id: String) {
     }
 
     fun checkActive() {
-        if (timedOut.get()) throw MediaFailure("timeout", "L’analyse a pris trop de temps. Vérifiez votre connexion et réessayez.")
+        if (timedOut.get()) throw MediaFailure("timeout", "L’analyse a pris trop de temps. Vérifie ta connexion et réessaie.")
         if (cancelled.get()) throw MediaFailure("cancelled", "Téléchargement annulé.")
     }
 
@@ -95,7 +95,7 @@ class DownloadStore(private val context: Context) {
 
     private fun stageSelectedTree(file: File, name: String, mime: String, task: MediaTask, rawTreeUri: String): PendingMedia {
         val tree = DocumentFile.fromTreeUri(context, android.net.Uri.parse(rawTreeUri))
-            ?: throw MediaFailure("storage", "Le dossier choisi n’est plus accessible. Choisissez un autre dossier.")
+            ?: throw MediaFailure("storage", "Le dossier choisi n’est plus accessible. Choisis un autre dossier.")
         if (!tree.canWrite()) throw MediaFailure("storage", "Le dossier choisi n’est plus accessible en écriture.")
         val partial = tree.createFile(mime, "$name.partial")
             ?: throw MediaFailure("storage", "Impossible de créer le fichier dans le dossier choisi.")

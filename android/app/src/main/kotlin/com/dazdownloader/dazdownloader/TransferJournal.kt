@@ -10,7 +10,7 @@ import android.os.Process
  */
 internal object TransferInterruption {
     private val activeStates = setOf("downloading", "processing", "saving", "retrying")
-    const val MESSAGE = "Le téléchargement a été interrompu car Loady a été fermé. Relancez-le."
+    const val MESSAGE = "Le téléchargement a été interrompu car Loady a été fermé. Relance-le."
 
     fun isInterrupted(state: String?, startedInPid: Int, currentPid: Int): Boolean =
         state in activeStates && startedInPid != currentPid

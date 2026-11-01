@@ -11,7 +11,7 @@ internal object NativeRuntimeGuard {
             throw MediaFailure(
                 "engine_initialization",
                 "Le moteur Android n’a pas pu démarrer (${error.javaClass.simpleName}). " +
-                    "Envoyez une capture de ce message avec le modèle du téléphone.",
+                    "Envoie une capture de ce message avec le modèle du téléphone.",
             ).apply { initCause(error) }
         }
     }
