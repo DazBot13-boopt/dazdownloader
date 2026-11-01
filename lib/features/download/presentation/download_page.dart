@@ -102,7 +102,7 @@ class _NoUrlState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Reviens à l’accueil pour coller une URL.',
+              'Reviens à l’accueil pour coller un lien.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),

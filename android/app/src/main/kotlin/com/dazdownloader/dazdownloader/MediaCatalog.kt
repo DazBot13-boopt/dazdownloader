@@ -158,7 +158,7 @@ object MediaUrls {
         if (uri == null || uri.scheme != "https" || uri.userInfo != null ||
             uri.port !in setOf(-1, 443) || host == null ||
             !(host in shortDomains || domains.any { host == it || host.endsWith(".$it") })) {
-            throw MediaFailure("invalid_url", "Utilise un lien HTTPS d’une plateforme prise en charge.")
+            throw MediaFailure("invalid_url", "Utilise le lien d’une vidéo d’une plateforme prise en charge.")
         }
         return uri.toString()
     }

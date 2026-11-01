@@ -9,8 +9,8 @@ class InvalidUrlException implements Exception {
 
   @override
   String toString() => switch (reason) {
-    MediaUrlError.empty => 'Colle une URL pour continuer.',
-    MediaUrlError.malformed => 'Cette URL n’est pas valide.',
+    MediaUrlError.empty => 'Colle un lien pour continuer.',
+    MediaUrlError.malformed => 'Ce lien n’est pas valide.',
     MediaUrlError.unsupported =>
       'Cette plateforme n’est pas encore prise en charge.',
   };
