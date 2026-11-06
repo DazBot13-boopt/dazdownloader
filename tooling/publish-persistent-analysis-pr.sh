@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-PROJECT_DIR="/home/ubuntu/dazdownloader"
+PROJECT_DIR="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 BRANCH="feature/persistent-analysis"
 COMMIT_MESSAGE="feat: persist analysis session across app restarts"
 PR_TITLE="feat: persist analysis session"
@@ -14,13 +14,13 @@ if [[ "$(git branch --show-current)" != "$BRANCH" ]]; then
 fi
 
 echo "==> Mise à jour des dépendances"
-/home/ubuntu/tools/flutter/bin/flutter pub get
+"${FLUTTER:-flutter}" pub get
 
 echo "==> Analyse statique"
-/home/ubuntu/tools/flutter/bin/flutter analyze --no-pub
+"${FLUTTER:-flutter}" analyze --no-pub
 
 echo "==> Tests Flutter"
-/home/ubuntu/tools/flutter/bin/flutter test --no-pub
+"${FLUTTER:-flutter}" test --no-pub
 
 echo "==> Ajout des fichiers de la fonctionnalité"
 git add -- \

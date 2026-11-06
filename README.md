@@ -4,7 +4,7 @@ Application Android (Flutter + Kotlin) qui télécharge en local les **vidéos
 publiques** et leur audio. Pas de compte, pas de serveur Loady, pas de
 synchronisation cloud.
 
-Version actuelle : `1.13.0+34` (voir `pubspec.yaml`).
+Version actuelle : `1.16.0+41` (voir `pubspec.yaml`).
 
 > Le dépôt, le package et certains identifiants techniques portent encore
 > l'ancien nom **DAZDOWNLOADER** (`com.dazdownloader.dazdownloader`, canaux
@@ -124,15 +124,17 @@ dépôt public, machines standard).
 
 | Workflow | Déclencheur | Résultat |
 |---|---|---|
-| `build-apk.yml` | manuel ou tag `v*` | APK release **arm64 uniquement**, signé avec la clé de debug partagée (installable par-dessus les versions de test) |
+| `build-apk.yml` | manuel ou tag `v*` | APK release **arm64 et armeabi-v7a**, signé avec la clé de debug partagée (installable par-dessus les versions de test) |
 | `build-release-aab.yml` | manuel ou tag `release-v*` | AAB pour Google Play, signé avec la clé d'upload |
 | `preview-web.yml` | PR vers `main` | build web de contrôle (sans déploiement) |
 | `deploy-web.yml` | push sur `main` | aperçu web sur GitHub Pages (`/dazdownloader/`) |
+| `tests.yml` | PR et push sur `main` | `flutter analyze`, `flutter test` et tests unitaires Kotlin (Gradle) |
 
 La version web sert uniquement d'aperçu de l'interface : elle ne télécharge rien.
 
-**Aucun workflow ne lance encore les tests** (`flutter analyze`, `flutter test`,
-tests Gradle) : à lancer localement avant chaque PR.
+Les tests (`flutter analyze`, `flutter test`, tests Gradle) sont lancés par
+`tests.yml` sur chaque PR vers `main` ; les lancer aussi localement avant de
+pousser évite d'attendre la CI.
 
 Les APK/AAB sont des artefacts conservés 90 jours ; attacher les versions à
 garder à une Release GitHub.
@@ -213,6 +215,8 @@ Avant une publication Google Play, points bloquants connus :
 - La mise à jour de yt-dlp à la demande télécharge du code exécutable hors du
   Play Store, ce que les règles Google Play interdisent.
 - Les applications permettant de télécharger depuis YouTube sont généralement
-  refusées par Google Play (et par AdMob).
+  refusées par Google Play (et par AdMob). **La prise en charge de YouTube va
+  donc être retirée** de Loady (parser Flutter, `MediaUrls` côté Kotlin, icône
+  de l'accueil) avant la publication sur le Play Store.
 
 Utiliser Loady uniquement pour des contenus dont le téléchargement est autorisé.
