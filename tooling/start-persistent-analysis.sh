@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-PROJECT_DIR="/home/ubuntu/dazdownloader"
+PROJECT_DIR="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 BRANCH="feature/persistent-analysis"
 
 cd "$PROJECT_DIR"
