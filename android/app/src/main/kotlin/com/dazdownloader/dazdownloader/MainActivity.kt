@@ -26,6 +26,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         mediaBridge = MediaBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+        AppLauncher(this, flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dazdownloader/share")
             .setMethodCallHandler { call, result ->
                 if (call.method == "pending") {

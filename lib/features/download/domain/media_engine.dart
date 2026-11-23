@@ -15,7 +15,10 @@ abstract interface class MediaEngine {
 
   /// Whether this video was already saved in this format, so the user can be
   /// warned before downloading it again.
-  Future<bool> alreadyDownloaded(MediaPreview preview, MediaFormatOption format);
+  Future<bool> alreadyDownloaded(
+    MediaPreview preview,
+    MediaFormatOption format,
+  );
 }
 
 class TransferSnapshot {

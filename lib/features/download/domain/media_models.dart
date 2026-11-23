@@ -1,4 +1,13 @@
-enum MediaPlatform { youtube, tiktok, instagram, snapchat, x, facebook, pinterest, threads }
+enum MediaPlatform {
+  youtube,
+  tiktok,
+  instagram,
+  snapchat,
+  x,
+  facebook,
+  pinterest,
+  threads,
+}
 
 extension MediaPlatformDetails on MediaPlatform {
   String get label => switch (this) {
@@ -12,8 +21,33 @@ extension MediaPlatformDetails on MediaPlatform {
     MediaPlatform.threads => 'Threads',
   };
 
-  /// Home page of the platform. Android opens it in the platform's app when
-  /// installed (its app links claim these addresses), otherwise in a browser.
+  /// Android packages of the platform's apps, full edition before Lite. The
+  /// home screen opens whichever is installed and asks when there are two.
+  /// Keep in sync with the `<queries>` of AndroidManifest.xml.
+  List<String> get appPackages => switch (this) {
+    MediaPlatform.youtube => const ['com.google.android.youtube'],
+    MediaPlatform.tiktok => const [
+      'com.zhiliaoapp.musically',
+      'com.ss.android.ugc.trill',
+      'com.zhiliaoapp.musically.go',
+      'com.ss.android.ugc.tiktok.lite',
+    ],
+    MediaPlatform.instagram => const [
+      'com.instagram.android',
+      'com.instagram.lite',
+    ],
+    MediaPlatform.snapchat => const ['com.snapchat.android'],
+    MediaPlatform.x => const ['com.twitter.android'],
+    MediaPlatform.facebook => const [
+      'com.facebook.katana',
+      'com.facebook.lite',
+    ],
+    MediaPlatform.pinterest => const ['com.pinterest'],
+    MediaPlatform.threads => const ['com.instagram.barcelona'],
+  };
+
+  /// Home page of the platform, opened in a browser when none of its apps is
+  /// installed.
   Uri get homeUrl => Uri.parse(switch (this) {
     MediaPlatform.youtube => 'https://www.youtube.com',
     MediaPlatform.tiktok => 'https://www.tiktok.com',

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/apps/app_launcher.dart';
 import '../../../core/update/update_checker.dart';
 import '../../../core/widgets/brand_mark.dart';
 import '../../download/domain/media_models.dart';
@@ -53,17 +54,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  /// Opens the platform's app when it is installed, so the user can pick a
-  /// video and share or copy its link; falls back to the website.
+  /// Opens the platform's app so the user can pick a video and copy its link.
+  /// With both the full and the Lite edition installed, asks which one every
+  /// time; with neither, opens the website in a browser.
   Future<void> _openPlatform(MediaPlatform platform) async {
-    final url = platform.homeUrl;
-    final inApp = await launchUrl(
-      url,
-      mode: LaunchMode.externalNonBrowserApplication,
-    ).catchError((_) => false);
-    if (inApp) return;
+    final launcher = ref.read(appLauncherProvider);
+    final apps = await launcher.installed(platform.appPackages);
+    if (!mounted) return;
+    if (apps.isNotEmpty) {
+      final app = apps.length == 1
+          ? apps.single
+          : await _chooseApp(platform, apps);
+      if (app == null) return; // Choice dismissed.
+      if (await launcher.launch(app.packageName)) return;
+    }
     final inBrowser = await launchUrl(
-      url,
+      platform.homeUrl,
       mode: LaunchMode.externalApplication,
     ).catchError((_) => false);
     if (!inBrowser && mounted) {
@@ -73,6 +79,41 @@ class _HomePageState extends ConsumerState<HomePage> {
           SnackBar(content: Text('Impossible d’ouvrir ${platform.label}.')),
         );
     }
+  }
+
+  Future<InstalledApp?> _chooseApp(
+    MediaPlatform platform,
+    List<InstalledApp> apps,
+  ) {
+    return showModalBottomSheet<InstalledApp>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(
+                'Ouvrir ${platform.label} avec :',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            for (final app in apps)
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                leading: app.icon == null
+                    ? const Icon(Icons.apps, size: 40)
+                    : Image.memory(app.icon!, width: 40, height: 40),
+                title: Text(app.label),
+                onTap: () => Navigator.of(context).pop(app),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   void _dismissUpdate(String version) {
@@ -212,8 +253,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       const SizedBox(height: 34),
                       _SectionTitle(
                         title: 'Plateformes prises en charge',
-                        subtitle:
-                            'Touche une plateforme pour l’ouvrir et copier un lien.',
+                        subtitle: 'Touche une plateforme pour l’ouvrir et copier un lien.',
                       ),
                       const SizedBox(height: 14),
                       GridView.builder(
@@ -383,7 +423,10 @@ class _UpdateCard extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: Wrap(
                 children: [
-                  TextButton(onPressed: onLater, child: const Text('Plus tard')),
+                  TextButton(
+                    onPressed: onLater,
+                    child: const Text('Plus tard'),
+                  ),
                   TextButton(
                     onPressed: onDownload,
                     child: const Text('Télécharger'),
@@ -488,9 +531,8 @@ class _PlatformCard extends StatelessWidget {
     MediaPlatform.x => const Color(0xFF71717A),
     MediaPlatform.facebook => const Color(0xFF1877F2),
     MediaPlatform.pinterest => const Color(0xFFE60023),
-    MediaPlatform.threads => isDark
-        ? const Color(0xFFFFFFFF)
-        : const Color(0xFF101010),
+    MediaPlatform.threads =>
+      isDark ? const Color(0xFFFFFFFF) : const Color(0xFF101010),
   };
 
   @override
@@ -518,31 +560,31 @@ class _PlatformCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              platform == MediaPlatform.tiktok
-                  ? _TiktokMark(size: 20, isDark: isDark)
-                  : FaIcon(_icon, color: _color(isDark), size: 20),
-            const SizedBox(height: 6),
-            // Flexible keeps the tile free of overflow stripes on the
-            // narrowest phones, where a square cell leaves very little room.
-            Flexible(
-              child: Text(
-                platform.label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                platform == MediaPlatform.tiktok
+                    ? _TiktokMark(size: 20, isDark: isDark)
+                    : FaIcon(_icon, color: _color(isDark), size: 20),
+                const SizedBox(height: 6),
+                // Flexible keeps the tile free of overflow stripes on the
+                // narrowest phones, where a square cell leaves very little room.
+                Flexible(
+                  child: Text(
+                    platform.label,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
+              ],
             ),
-          ],
-        ),
           ),
         ),
       ),
