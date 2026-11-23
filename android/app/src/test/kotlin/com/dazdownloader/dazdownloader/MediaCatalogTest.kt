@@ -44,13 +44,14 @@ class MediaCatalogTest {
         assertEquals(1200L, result.formats.first().sizeBytes)
     }
 
-    @Test fun webmKeepsWebmAudioAndSupports4k() {
+    @Test fun webmIsNeverOffered() {
         val result = MediaCatalog.parse(metadata(
             stream("313", ext = "webm", height = 2160, audio = false),
-            stream("251", ext = "webm", height = 0, video = false)))
-        assertEquals("313+251", result.formats.first().selector)
-        assertEquals(2160, result.formats.first().height)
-        assertNull(result.formats.first().sizeBytes)
+            stream("137", height = 1080, audio = false, size = 1000),
+            stream("251", ext = "webm", height = 0, video = false),
+            stream("140", ext = "m4a", height = 0, video = false, size = 200)))
+        assertEquals(listOf("mp4-1080", "mp3-audio"), result.formats.map { it.id })
+        assertEquals("137+140", result.formats.first().selector)
     }
 
     @Test fun aDubbedTrackNeverReplacesTheOriginalAudio() {
@@ -68,12 +69,12 @@ class MediaCatalogTest {
 
     @Test fun audioDescriptionIsNotMistakenForTheOriginalTrack() {
         val result = MediaCatalog.parse(metadata(
-            stream("313", ext = "webm", height = 2160, audio = false),
-            stream("251-described", ext = "webm", height = 0, video = false,
+            stream("137", height = 1080, audio = false),
+            stream("140-described", ext = "m4a", height = 0, video = false,
                 bitrate = 2000, language = -10),
-            stream("251-original", ext = "webm", height = 0, video = false,
+            stream("140-original", ext = "m4a", height = 0, video = false,
                 bitrate = 120, language = 10)))
-        assertEquals("313+251-original", result.formats.first().selector)
+        assertEquals("137+140-original", result.formats.first().selector)
     }
 
     @Test fun duplicateResolutionsSelectTheBestAvailableStream() {

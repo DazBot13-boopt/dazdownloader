@@ -67,12 +67,11 @@ String get supportedPlatformsLabel {
   return '${labels.sublist(0, labels.length - 1).join(', ')} ou ${labels.last}';
 }
 
-enum MediaFormat { mp4, webm, mp3 }
+enum MediaFormat { mp4, mp3 }
 
 extension MediaFormatDetails on MediaFormat {
   String get label => switch (this) {
     MediaFormat.mp4 => 'MP4',
-    MediaFormat.webm => 'WebM',
     MediaFormat.mp3 => 'MP3',
   };
 }

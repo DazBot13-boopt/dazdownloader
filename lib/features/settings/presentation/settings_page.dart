@@ -4,6 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/apps/preferred_apps.dart';
 import '../../../core/links/site_links.dart';
 import '../../../core/settings/theme_mode_controller.dart';
 import '../../../core/update/update_checker.dart';
@@ -27,11 +28,31 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String _locationName = 'Downloads/Loady';
   bool _customLocation = false;
   bool _checkingUpdate = false;
+  bool _hasPreferredApps = false;
 
   @override
   void initState() {
     super.initState();
     _loadLocation();
+    _loadPreferredApps();
+  }
+
+  Future<void> _loadPreferredApps() async {
+    final any = await ref.read(preferredAppsProvider).hasAny();
+    if (mounted) setState(() => _hasPreferredApps = any);
+  }
+
+  Future<void> _forgetPreferredApps() async {
+    await ref.read(preferredAppsProvider).forgetAll();
+    if (!mounted) return;
+    setState(() => _hasPreferredApps = false);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Loady demandera à nouveau quelle version ouvrir.'),
+        ),
+      );
   }
 
   Future<void> _loadLocation() async {
@@ -243,6 +264,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: const Icon(Icons.settings_backup_restore),
                         )
                       : const Icon(Icons.chevron_right),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.apps_outlined),
+                  title: const Text('Versions des apps'),
+                  subtitle: Text(
+                    _hasPreferredApps
+                        ? 'Oublier les choix « Toujours » (Lite ou normale).'
+                        : 'Aucun choix « Toujours » enregistré.',
+                  ),
+                  enabled: _hasPreferredApps,
+                  onTap: _forgetPreferredApps,
+                  trailing: _hasPreferredApps
+                      ? const Icon(Icons.settings_backup_restore)
+                      : null,
                 ),
               ],
             ),

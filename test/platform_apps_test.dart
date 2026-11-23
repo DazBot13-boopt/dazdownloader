@@ -1,11 +1,13 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import 'package:dazdownloader/app.dart';
 import 'package:dazdownloader/core/apps/app_launcher.dart';
+import 'package:dazdownloader/core/apps/preferred_apps.dart';
 import 'package:dazdownloader/features/download/domain/media_models.dart';
 import 'package:dazdownloader/features/history/data/download_history.dart';
 
@@ -32,6 +34,8 @@ class _FakeLauncher implements AppLauncher {
 
 void main() {
   setUp(() {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           DownloadHistory.channel,
@@ -83,7 +87,45 @@ void main() {
 
     await tester.tap(find.text('Instagram Lite'));
     await tester.pumpAndSettle();
+    expect(launcher.launched, isEmpty, reason: 'waits for once or always');
+
+    await tester.tap(find.text('Une seule fois'));
+    await tester.pumpAndSettle();
     expect(launcher.launched, ['com.instagram.lite']);
+
+    // "Une seule fois" remembers nothing: the next tap asks again.
+    await tester.tap(find.text('Instagram'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ouvrir Instagram avec :'), findsOneWidget);
+  });
+
+  testWidgets('"Toujours" opens the chosen edition directly next time', (
+    tester,
+  ) async {
+    final launcher = _FakeLauncher({
+      'com.zhiliaoapp.musically': 'TikTok',
+      'com.zhiliaoapp.musically.go': 'TikTok Lite',
+    });
+    await tapPlatform(tester, launcher, 'TikTok');
+    await tester.tap(find.text('TikTok Lite'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Toujours'));
+    await tester.pumpAndSettle();
+    expect(launcher.launched, ['com.zhiliaoapp.musically.go']);
+
+    await tester.tap(find.text('TikTok'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ouvrir TikTok avec :'), findsNothing);
+    expect(launcher.launched, [
+      'com.zhiliaoapp.musically.go',
+      'com.zhiliaoapp.musically.go',
+    ]);
+
+    // Forgetting the choice in Réglages brings the question back.
+    await PreferredApps().forgetAll();
+    await tester.tap(find.text('TikTok'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ouvrir TikTok avec :'), findsOneWidget);
   });
 
   testWidgets('dismissing the choice opens nothing', (tester) async {

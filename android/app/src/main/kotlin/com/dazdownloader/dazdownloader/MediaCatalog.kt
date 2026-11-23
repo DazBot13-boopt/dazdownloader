@@ -14,7 +14,6 @@ data class NativeFormat(
 ) {
     val mimeType: String get() = when (extension) {
         "mp3" -> "audio/mpeg"
-        "webm" -> "video/webm"
         else -> "video/mp4"
     }
 
@@ -37,7 +36,9 @@ data class MediaCatalog(
     )
 
     companion object {
-        private val videoExtensions = setOf("mp4", "webm")
+        // WebM is not offered: WhatsApp, iPhones and many TVs or editors
+        // refuse it, and MP4 covers the same videos.
+        private val videoExtensions = setOf("mp4")
         private val formatId = Regex("[a-zA-Z0-9_.-]+")
 
         /**
@@ -91,8 +92,7 @@ data class MediaCatalog(
                 streams.filter { it.hasVideo && !it.hasAudio }
             val videoOptions = videoStreams.mapNotNull { video ->
                 val companion = if (!video.hasAudio) audio.filter {
-                    if (video.extension == "mp4") it.extension in setOf("m4a", "mp4", "aac")
-                    else it.extension in setOf("webm", "opus")
+                    it.extension in setOf("m4a", "mp4", "aac")
                 }.maxByOrNull { it.bitrate } else null
                 // Do not offer an accidentally silent video when audio exists
                 // but cannot be merged into this container without transcoding.

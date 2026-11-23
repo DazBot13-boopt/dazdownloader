@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/apps/app_launcher.dart';
+import '../../../core/apps/preferred_apps.dart';
 import '../../../core/update/update_checker.dart';
 import '../../../core/widgets/brand_mark.dart';
 import '../../download/domain/media_models.dart';
@@ -55,8 +56,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// Opens the platform's app so the user can pick a video and copy its link.
-  /// With both the full and the Lite edition installed, asks which one every
-  /// time; with neither, opens the website in a browser.
+  /// With both the full and the Lite edition installed, opens the one the
+  /// user chose to always use, or asks; with neither, opens the website.
   Future<void> _openPlatform(MediaPlatform platform) async {
     final launcher = ref.read(appLauncherProvider);
     final apps = await launcher.installed(platform.appPackages);
@@ -64,7 +65,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (apps.isNotEmpty) {
       final app = apps.length == 1
           ? apps.single
-          : await _chooseApp(platform, apps);
+          : await _preferredOrChosen(platform, apps);
       if (app == null) return; // Choice dismissed.
       if (await launcher.launch(app.packageName)) return;
     }
@@ -81,39 +82,28 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<InstalledApp?> _chooseApp(
+  /// The edition remembered with "Toujours" while it is still installed,
+  /// otherwise the user's pick from the choice sheet.
+  Future<InstalledApp?> _preferredOrChosen(
     MediaPlatform platform,
     List<InstalledApp> apps,
-  ) {
-    return showModalBottomSheet<InstalledApp>(
+  ) async {
+    final preferred = ref.read(preferredAppsProvider);
+    final saved = await preferred.get(platform.name);
+    for (final app in apps) {
+      if (app.packageName == saved) return app;
+    }
+    if (!mounted) return null;
+    final choice = await showModalBottomSheet<_AppChoice>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text(
-                'Ouvrir ${platform.label} avec :',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            for (final app in apps)
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                leading: app.icon == null
-                    ? const Icon(Icons.apps, size: 40)
-                    : Image.memory(app.icon!, width: 40, height: 40),
-                title: Text(app.label),
-                onTap: () => Navigator.of(context).pop(app),
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+      builder: (context) => _AppChoiceSheet(platform: platform, apps: apps),
     );
+    if (choice == null) return null;
+    if (choice.always) {
+      await preferred.remember(platform.name, choice.app.packageName);
+    }
+    return choice.app;
   }
 
   void _dismissUpdate(String version) {
@@ -674,6 +664,94 @@ class _EmptyHistoryCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppChoice {
+  const _AppChoice(this.app, {required this.always});
+
+  final InstalledApp app;
+  final bool always;
+}
+
+/// Like Android's own "Open with": pick an edition, then open it just once or
+/// always.
+class _AppChoiceSheet extends StatefulWidget {
+  const _AppChoiceSheet({required this.platform, required this.apps});
+
+  final MediaPlatform platform;
+  final List<InstalledApp> apps;
+
+  @override
+  State<_AppChoiceSheet> createState() => _AppChoiceSheetState();
+}
+
+class _AppChoiceSheetState extends State<_AppChoiceSheet> {
+  InstalledApp? _selected;
+
+  void _close({required bool always}) =>
+      Navigator.of(context).pop(_AppChoice(_selected!, always: always));
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final selected = _selected;
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Text(
+              'Ouvrir ${widget.platform.label} avec :',
+              style: theme.textTheme.titleMedium,
+            ),
+          ),
+          for (final app in widget.apps)
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+              selected: app == selected,
+              leading: app.icon == null
+                  ? const Icon(Icons.apps, size: 40)
+                  : Image.memory(app.icon!, width: 40, height: 40),
+              title: Text(app.label),
+              trailing: app == selected
+                  ? const Icon(Icons.check_circle)
+                  : null,
+              onTap: () => setState(() => _selected = app),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
+            child: Text(
+              '« Toujours » se change dans Réglages.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: selected == null
+                      ? null
+                      : () => _close(always: false),
+                  child: const Text('Une seule fois'),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: selected == null
+                      ? null
+                      : () => _close(always: true),
+                  child: const Text('Toujours'),
+                ),
+              ],
+            ),
           ),
         ],
       ),
