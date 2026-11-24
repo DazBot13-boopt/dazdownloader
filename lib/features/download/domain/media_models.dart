@@ -103,7 +103,7 @@ class MediaFormatOption {
   String get qualityLabel => format == MediaFormat.mp3
       ? 'Audio'
       : height == null
-      ? 'Original'
+      ? 'Standard'
       : '${height}p';
 
   String get sizeLabel {

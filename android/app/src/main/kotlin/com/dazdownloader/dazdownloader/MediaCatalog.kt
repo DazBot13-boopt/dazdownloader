@@ -41,6 +41,23 @@ data class MediaCatalog(
         private val videoExtensions = setOf("mp4")
         private val formatId = Regex("[a-zA-Z0-9_.-]+")
 
+        private const val INCOMPATIBLE = 0
+
+        /** Android reads a JSON null as "null"; the JVM's org.json as "". */
+        private fun text(stream: JSONObject, key: String): String =
+            if (stream.isNull(key)) "" else stream.optString(key)
+
+        /**
+         * 2 for H.264, which every phone, WhatsApp and iPhone plays; 1 when the
+         * extractor does not say (Facebook's and Instagram's ready-made files,
+         * H.264 in practice); 0 for VP9, AV1 and HEVC.
+         */
+        private fun codecRank(vcodec: String): Int = when {
+            vcodec.isEmpty() -> 1
+            vcodec.startsWith("avc") || vcodec.startsWith("h264") -> 2
+            else -> INCOMPATIBLE
+        }
+
         /**
          * Keeps only the streams the extractor ranks highest for language.
          * yt-dlp reports 10 for an original YouTube track, -1 for a dub and a
@@ -66,45 +83,60 @@ data class MediaCatalog(
             val array = data.optJSONArray("formats")
             val raw = if (array == null) listOf(data) else
                 (0 until array.length()).mapNotNull { array.optJSONObject(it) }
-            val streams = raw.mapNotNull { stream ->
+            val streams = raw.mapIndexedNotNull { index, stream ->
                 val id = stream.optString("format_id", "best")
-                if (!formatId.matches(id) || stream.optBoolean("has_drm")) return@mapNotNull null
+                if (!formatId.matches(id) || stream.optBoolean("has_drm")) return@mapIndexedNotNull null
                 val extension = stream.optString("ext")
-                val vcodec = stream.optString("vcodec")
-                val acodec = stream.optString("acodec")
+                val vcodec = text(stream, "vcodec")
+                val acodec = text(stream, "acodec")
                 val hasVideo = vcodec != "none" && extension in videoExtensions
                 val hasAudio = acodec != "none" && (hasVideo || acodec.isNotEmpty() ||
                     extension in setOf("m4a", "mp3", "aac", "opus"))
-                if (stream.optString("url").isBlank() || (!hasVideo && !hasAudio)) return@mapNotNull null
-                Stream(id, extension, stream.optInt("height").takeIf { it > 0 },
+                if (stream.optString("url").isBlank() || (!hasVideo && !hasAudio)) return@mapIndexedNotNull null
+                val width = stream.optInt("width").takeIf { it > 0 }
+                val height = stream.optInt("height").takeIf { it > 0 }
+                Stream(id, extension,
+                    // A vertical 1080×1920 video is "1080p", like on the
+                    // platforms themselves, not "1920p".
+                    if (width != null && height != null) minOf(width, height) else height,
                     hasVideo, hasAudio,
                     stream.optLong("filesize").takeIf { it > 0 }
                         ?: stream.optLong("filesize_approx").takeIf { it > 0 },
                     stream.optDouble("tbr", 0.0).takeIf { it.isFinite() } ?: 0.0,
-                    stream.optInt("language_preference", 0))
+                    stream.optInt("language_preference", 0),
+                    codecRank(vcodec), index)
             }
             // YouTube ships dubbed tracks beside the original audio. Picking
             // the loudest bitrate would hand back a translation of a video the
             // user chose in its own language, so only the track the extractor
             // ranks highest for language is ever offered.
             val audio = original(streams.filter { it.hasAudio && !it.hasVideo })
-            val videoStreams = original(streams.filter { it.hasVideo && it.hasAudio }) +
-                streams.filter { it.hasVideo && !it.hasAudio }
+            val muxed = original(streams.filter { it.hasVideo && it.hasAudio })
+            val allVideo = muxed + streams.filter { it.hasVideo && !it.hasAudio }
+            // VP9, AV1 and HEVC fail on WhatsApp, iPhones, many TVs and
+            // editors, as WebM did. They are only offered when a video exists
+            // in nothing else.
+            val videoStreams = allVideo.filter { it.codecRank > INCOMPATIBLE }.ifEmpty { allVideo }
             val videoOptions = videoStreams.mapNotNull { video ->
                 val companion = if (!video.hasAudio) audio.filter {
                     it.extension in setOf("m4a", "mp4", "aac")
                 }.maxByOrNull { it.bitrate } else null
-                // Do not offer an accidentally silent video when audio exists
-                // but cannot be merged into this container without transcoding.
-                if (!video.hasAudio && companion == null && audio.isNotEmpty()) return@mapNotNull null
+                // Never offer a silent video when the sound exists, either as a
+                // separate track this container cannot take or inside another
+                // file (Facebook ships silent VP9 streams beside its full ones).
+                if (!video.hasAudio && companion == null && (audio.isNotEmpty() || muxed.isNotEmpty()))
+                    return@mapNotNull null
                 val size = if (companion == null) video.size else
                     if (video.size != null && companion.size != null) video.size + companion.size else null
                 val option = NativeFormat(
                     "${video.extension}-${video.height ?: "original"}", video.extension,
                     video.height, video.id + (companion?.let { "+${it.id}" } ?: ""), size)
-                option to video.bitrate
+                option to video
             }.groupBy { it.first.id }.values.map { candidates ->
-                candidates.maxBy { it.second }.first
+                // H.264 first, then the richest stream; yt-dlp lists formats
+                // from worst to best, so the later one wins a tie.
+                candidates.maxWith(compareBy<Pair<NativeFormat, Stream>>(
+                    { it.second.codecRank }, { it.second.bitrate }, { it.second.index })).first
             }.sortedWith(compareByDescending<NativeFormat> { it.height ?: 0 }.thenBy { it.extension })
 
             val bestAudio = audio.maxByOrNull { it.bitrate }
@@ -131,7 +163,7 @@ data class MediaCatalog(
 
     private data class Stream(val id: String, val extension: String, val height: Int?,
         val hasVideo: Boolean, val hasAudio: Boolean, val size: Long?, val bitrate: Double,
-        val languagePreference: Int = 0)
+        val languagePreference: Int = 0, val codecRank: Int = 0, val index: Int = 0)
 }
 
 object MediaUrls {
